@@ -5,7 +5,7 @@ date: "4/17/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 library(here)
 library(tidyverse)
@@ -13,6 +13,7 @@ library(tidyverse)
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
 # Source: https://www.huduser.gov/portal/datasets/fmr.html
+# Methodology: https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf
 # NOTE: some years have more ZIP codes than others in this data
 # TODO: Find out which ZIPs are included in all data
 source(here("ingest_hud_data.R"))
@@ -25,15 +26,56 @@ source(here("ingest_hud_data.R"))
 # as a case study
 zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %>%
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
+  # select(RegionName, ends_with("-12")) # We should address this selection
+  # by using either an average or justifying using only the values
+  # for one arbitrary month
 ```
+
+# Research Questions
+
+# Data Plan
+
+Discrepancies in data availability. Some ZIP codes are missing values for some years in the ZORI data, some HUD data is missing data for ZIP Codes across years.
+
+Time permitting add census demographic data from the ACS.
+
+# Analysis Plan
 
 Zillow's ZORI data provides average rents across all units, **regardless of the number of bedrooms**. We need some method to compare ZORI values with the values provided by HUD. This could take the form of finding the best fitting bedroom size or collapsing the HUD bedroom values into one average value. We can try both and see what works best.
 
 ```{r}
 # TODO: Create method to compare ZORI values against FMR values
 # Ideally this chunk will collapse hud_data_raw and zori_raw into 
-# one object called data
+# one object called data with as many ZIP codes as reasonably possible
+
+### The final dataset should have no missing values for a ZIP code in any year. That means that the ZIP codes should have values for all years in the the hud and zori datasets.
+
+### --------------
+### hud data
+###
+
+hud_data <- hud_data_raw %>%
+  mutate(br_avg = (br_0 + br_1 + br_2 + br_3 + br_4) / 5) # Create a variable to map to the ZORI values
+
+### ------------
+### zori data
+###
+
+zori <- zori_raw %>%
+  filter(RegionName %in% hud_data_raw$ZIP) %>% # 92 ZIP Codes
+  # We want to pivot_longer so that the year is pulled from the column names
+  # and the remaining columns are for the months. 
+  # Final data set should have the following columns: RegionName (ZIP), year, rent_avg
+
+
+### -----------
+### combined
+###
+
+data <- ""
 ```
+
+# Plots
 
 Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
 

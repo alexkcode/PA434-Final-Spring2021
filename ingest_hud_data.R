@@ -84,7 +84,7 @@ hud_2014 <- readxl::read_xls(here("Data", "HUD", "small_area_fmrs_fy2014.xls")) 
          "br_2" = area_rent_br2,
          "br_3" = area_rent_br3,
          "br_4" = area_rent_br4) %>%
-  mutate(year = 2017, .before = "ZIP")
+  mutate(year = 2014, .before = "ZIP")
 
 hud_data_raw <- list(hud_2021, hud_2020, hud_2019, hud_2018,
                      hud_2017, hud_2016, hud_2015, hud_2014) %>%

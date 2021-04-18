@@ -1,6 +1,6 @@
 # To Do
 
-- Expand on the definition of "Adequate housing is an important factorin a person’s wellbeing."
+- Expand on the definition of "Adequate housing is an important factor in a person’s wellbeing."
 - Research questions: 
   - Directionality of relationship between "actual rent" and "Fair Market rent"
 - Data:
