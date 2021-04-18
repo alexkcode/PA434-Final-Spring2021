@@ -43,7 +43,7 @@ Time permitting add census demographic data from the ACS.
 
 Zillow's ZORI data provides average rents across all units, **regardless of the number of bedrooms**. We need some method to compare ZORI values with the values provided by HUD. This could take the form of finding the best fitting bedroom size or collapsing the HUD bedroom values into one average value. We can try both and see what works best.
 
-```{r}
+```{r message=FALSE}
 # TODO: Create method to compare ZORI values against FMR values
 # Ideally this chunk will collapse hud_data_raw and zori_raw into 
 # one object called data with as many ZIP codes as reasonably possible
@@ -55,32 +55,63 @@ Zillow's ZORI data provides average rents across all units, **regardless of the 
 ###
 
 hud_data <- hud_data_raw %>%
-  mutate(br_avg = (br_0 + br_1 + br_2 + br_3 + br_4) / 5) # Create a variable to map to the ZORI values
+  # Create a variable to map to the ZORI values
+  mutate(br_avg = (br_0 + br_1 + br_2 + br_3 + br_4) / 5) %>% 
+  select(!c(br_0:br_4)) %>%
+  # saw some duplicates on the year-zip level
+  distinct()
 
 ### ------------
 ### zori data
 ###
 
-zori <- zori_raw %>%
+zori_staging <- zori_raw %>%
   filter(RegionName %in% hud_data_raw$ZIP) %>% # 92 ZIP Codes
   # We want to pivot_longer so that the year is pulled from the column names
   # and the remaining columns are for the months. 
   # Final data set should have the following columns: RegionName (ZIP), year, rent_avg
+  pivot_longer(cols = "2014-01":"2017-10",
+               names_to = c("year","month"),
+               names_sep = "-",
+               values_to = "rent",
+               names_transform = list(year = as.double)) %>%
+  select("RegionName","year","month","rent") 
 
+# quite a bit of missing data, ignoring issue for now
+# zori_staging %>%
+#   group_by(RegionName, year) %>%
+#   summarize(rent_missing_prop = sum(is.na(rent))/12)
+
+zori <- zori_staging %>%
+  group_by(RegionName, year) %>%
+  summarize(rent_avg = mean(rent, na.rm = TRUE))
 
 ### -----------
 ### combined
 ###
 
-data <- ""
+data <- zori %>%
+  left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
+  rename(hud_avg = br_avg, zori_avg = rent_avg)
+
 ```
 
 # Plots
 
 Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
 
-```{r}
+```{r message=FALSE}
 # TODO: Generate plots visualizing the data 
+
+data %>%
+  group_by(year) %>%
+  summarize(zori_total_avg = mean(zori_avg),
+         hud_total_avg = mean(hud_avg)) %>%
+  pivot_longer(cols = c(zori_total_avg:hud_total_avg),
+               names_to = "index",
+               values_to = "rent") %>%
+  ggplot(aes(x = year, y = rent, color = index)) +
+  geom_line(size = 2, lineend = "round")
 ```
 
 Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
