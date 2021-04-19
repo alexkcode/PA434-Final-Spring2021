@@ -2,13 +2,18 @@
 title: "The Affordable Housing Crunch"
 author: "Ethan Jantz & Alex Kwan"
 date: "4/17/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 library(here)
+library(tidycensus)
+library(tigris)
 library(tidyverse)
+
 
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
@@ -133,6 +138,11 @@ Finally, we'll want to take the above analysis and tie it back to the policy imp
 
 ```{r}
 # TODO: Time permitting, link existing data with census data on socioeconomic characteristics
+
+# ACS tables being queried by TidyCensus
+tables <- c("Sex by Age" = "B01001",
+            "Race" = "B02001",
+            "Median Household Income" = "B19013")
 ```
 
 
