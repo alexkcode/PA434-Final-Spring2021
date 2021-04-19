@@ -44,9 +44,6 @@ Time permitting add census demographic data from the ACS.
 Zillow's ZORI data provides average rents across all units, **regardless of the number of bedrooms**. We need some method to compare ZORI values with the values provided by HUD. This could take the form of finding the best fitting bedroom size or collapsing the HUD bedroom values into one average value. We can try both and see what works best.
 
 ```{r message=FALSE}
-# TODO: Create method to compare ZORI values against FMR values
-# Ideally this chunk will collapse hud_data_raw and zori_raw into 
-# one object called data with as many ZIP codes as reasonably possible
 
 ### The final dataset should have no missing values for a ZIP code in any year. That means that the ZIP codes should have values for all years in the the hud and zori datasets.
 
@@ -101,8 +98,9 @@ data <- zori %>%
 Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
 
 ```{r message=FALSE}
-# TODO: Generate plots visualizing the data 
-
+### -----------
+### Trend plot
+###
 data %>%
   group_by(year) %>%
   summarize(ZORI = mean(zori_avg),
@@ -118,6 +116,17 @@ data %>%
        y = "Rent",
        color = "Source") +
   theme_minimal()
+
+### --------------
+### ZIP/Rent dist plot
+### TODO
+
+
+### ------------------
+### YoY diff map
+### TODO
+
+
 ```
 
 Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
