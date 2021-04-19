@@ -105,13 +105,19 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 
 data %>%
   group_by(year) %>%
-  summarize(zori_total_avg = mean(zori_avg),
-         hud_total_avg = mean(hud_avg)) %>%
-  pivot_longer(cols = c(zori_total_avg:hud_total_avg),
+  summarize(ZORI = mean(zori_avg),
+         HUD = mean(hud_avg)) %>%
+  pivot_longer(cols = c(ZORI:HUD),
                names_to = "index",
                values_to = "rent") %>%
   ggplot(aes(x = year, y = rent, color = index)) +
-  geom_line(size = 2, lineend = "round")
+  geom_line(size = 2, lineend = "round") +
+  labs(title = "Average Rents",
+       subtitle = "HUD Fair Market Rent Average and Zillow Observed Rent Index Average",
+       x = "Year",
+       y = "Rent",
+       color = "Source") +
+  theme_minimal()
 ```
 
 Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
