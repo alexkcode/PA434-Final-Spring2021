@@ -32,6 +32,10 @@ zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
 ```
 
+# Background
+
+Why is affordable housing important? Housing as a social determinant of health. Affordable housing being related to better health outcomes for tenants. Evictions being related to poor health outcomes. Rental affordability as the average rent in relation to what HUD determines to be the Fair Market Rent, and what that means about affordability. Fair Market Rent, or FMR, is determined by a combination of a Census survey of rents paid by recent movers, rent inflation adjustment and forecasted expected growth.
+
 # Research Questions
 
 - Is the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in an area?
