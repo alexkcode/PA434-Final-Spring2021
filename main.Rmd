@@ -3,8 +3,8 @@ title: "The Affordable Housing Crunch"
 author: "Ethan Jantz & Alex Kwan"
 date: "4/17/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
@@ -37,6 +37,9 @@ zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %
 ```
 
 # Research Questions
+
+- Is the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in an area?
+- If there is a difference between actual rents and Fair Market Rents as determined by HUD, what data can we use to explain those differences?
 
 # Data Plan
 
