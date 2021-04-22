@@ -11,7 +11,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(here)
 library(tidycensus)
-library(tigris)
 library(tidyverse)
 
 
@@ -95,7 +94,6 @@ zori <- zori_staging %>%
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg)
-
 ```
 
 # Plots
@@ -130,18 +128,25 @@ data %>%
 
 
 ```{r message=FALSE}
+### ------------------
+### Cleveland Dot Plot
+### 
 cleveland <-
   data %>%
-  ggplot(aes(x = prop_enrollment, y = name)) +
-  geom_line(aes(group = name), size = 1) +
-  geom_point(aes(color = race), size = 5) +
+  filter(year == 2017) %>%
+  ungroup() %>%
+  slice_max(order_by = zori_avg - hud_avg, n = 5, with_ties = FALSE) %>%
+  pivot_longer(cols = c(zori_avg:hud_avg),
+               names_to = "source",
+               values_to = "rent") %>%
+  ggplot(aes(x = rent, y = RegionName)) +
+  geom_line(aes(group = RegionName), size = 1) +
+  geom_point(aes(color = source), size = 5) +
   labs(title = "Difference in Rents Across Zip Codes",
        subtitle = "HUD versus Zillow",
        x = "ZIP",
        y = "Rent",
-       color = "Source") +
-  scale_x_continuous(labels = scales::percent) + 
-  scale_color_brewer(palette = "Paired", direction = -1)
+       color = "Source")
 cleveland
 ```
 
@@ -149,14 +154,25 @@ cleveland
 ```{r message=FALSE}
 ### --------------
 ### ZIP/Rent distribution plot
-### TODO
-```
 
+data %>%
+  group_by(RegionName, year) %>%
+  summarize(ZORI = mean(zori_avg),
+         HUD = mean(hud_avg)) %>%
+  ggplot() +
+  geom_density(aes(x = ZORI), fill = "blue", alpha = .5) +
+  geom_density(aes(x = HUD), fill = "red", alpha = .5) +
+  labs(title = "Distribution of Rent Values by ZIP Code",
+       subtitle = "blue is ZORI, red is HUD",
+       x = "Rent", 
+       y = "Density") +
+  facet_wrap(~year)
+```
 
 ```{r message=FALSE}
 ### ------------------
 ### Year-over-Year difference map
-### TODO
+### Animation of a map
 
 
 ```
@@ -169,7 +185,10 @@ Finally, we'll want to take the above analysis and tie it back to the policy imp
 # ACS tables being queried by TidyCensus
 tables <- c("Sex by Age" = "B01001",
             "Race" = "B02001",
-            "Median Household Income" = "B19013")
+            "Median Household Income" = "B19013"
+            # Housing Characteristics
+            # Rent burden
+            )
 ```
 
 ```{r}
@@ -180,5 +199,5 @@ tables <- c("Sex by Age" = "B01001",
 ```
 
 
-
+# Limitations
 
