@@ -3,8 +3,8 @@ title: "The Affordable Housing Crunch"
 author: "Ethan Jantz & Alex Kwan"
 date: "4/17/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
@@ -126,14 +126,36 @@ data %>%
        y = "Rent",
        color = "Source") +
   theme_minimal()
+```
 
+
+```{r message=FALSE}
+cleveland <-
+  data %>%
+  ggplot(aes(x = prop_enrollment, y = name)) +
+  geom_line(aes(group = name), size = 1) +
+  geom_point(aes(color = race), size = 5) +
+  labs(title = "Difference in Rents Across Zip Codes",
+       subtitle = "HUD versus Zillow",
+       x = "ZIP",
+       y = "Rent",
+       color = "Source") +
+  scale_x_continuous(labels = scales::percent) + 
+  scale_color_brewer(palette = "Paired", direction = -1)
+cleveland
+```
+
+
+```{r message=FALSE}
 ### --------------
-### ZIP/Rent dist plot
+### ZIP/Rent distribution plot
 ### TODO
+```
 
 
+```{r message=FALSE}
 ### ------------------
-### YoY diff map
+### Year-over-Year difference map
 ### TODO
 
 
