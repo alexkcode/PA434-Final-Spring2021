@@ -11,7 +11,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(here)
 library(tidycensus)
-library(tigris)
 library(tidyverse)
 
 
@@ -95,7 +94,6 @@ zori <- zori_staging %>%
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg)
-
 ```
 
 # Plots
@@ -129,12 +127,27 @@ data %>%
 
 ### --------------
 ### ZIP/Rent dist plot
-### TODO
-
+### Histogram
+data %>%
+  group_by(RegionName, year) %>%
+  summarize(ZORI = mean(zori_avg),
+         HUD = mean(hud_avg)) %>%
+  ggplot() +
+  geom_density(aes(x = ZORI), fill = "blue", alpha = .5) +
+  geom_density(aes(x = HUD), fill = "red", alpha = .5) +
+  labs(title = "Distribution of Rent Values by ZIP Code",
+       subtitle = "blue is ZORI, red is HUD",
+       x = "Rent", 
+       y = "Density") +
+  facet_wrap(~year)
 
 ### ------------------
 ### YoY diff map
-### TODO
+### Animation of a map
+
+### ------------------
+### Cleveland Dot Plot
+### 
 
 
 ```
@@ -147,7 +160,9 @@ Finally, we'll want to take the above analysis and tie it back to the policy imp
 # ACS tables being queried by TidyCensus
 tables <- c("Sex by Age" = "B01001",
             "Race" = "B02001",
-            "Median Household Income" = "B19013")
+            "Median Household Income" = "B19013"
+            # Housing Characteristics
+            # Rent burden)
 ```
 
 ```{r}
@@ -158,5 +173,5 @@ tables <- c("Sex by Age" = "B01001",
 ```
 
 
-
+# Limitations
 
