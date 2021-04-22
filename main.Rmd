@@ -50,7 +50,7 @@ Time permitting add census demographic data from the ACS.
 
 Zillow's ZORI data provides average rents across all units, **regardless of the number of bedrooms**. We need some method to compare ZORI values with the values provided by HUD. This could take the form of finding the best fitting bedroom size or collapsing the HUD bedroom values into one average value. We can try both and see what works best.
 
-```{r message=FALSE}
+```{r }
 
 ### The final dataset should have no missing values for a ZIP code in any year. That means that the ZIP codes should have values for all years in the the hud and zori datasets.
 
@@ -71,7 +71,7 @@ hud_data <- hud_data_raw %>%
 
 zori_staging <- zori_raw %>%
   filter(RegionName %in% hud_data_raw$ZIP) %>% # 92 ZIP Codes
-  pivot_longer(cols = "2014-01":"2017-10",
+  pivot_longer(cols = "2014-01":"2020-12",
                names_to = c("year","month"),
                names_sep = "-",
                values_to = "rent",
@@ -85,7 +85,8 @@ zori_staging <- zori_raw %>%
 
 zori <- zori_staging %>%
   group_by(RegionName, year) %>%
-  summarize(rent_avg = mean(rent, na.rm = TRUE))
+  summarize(rent_avg = mean(rent, na.rm = TRUE)) %>%
+  ungroup()
 
 ### -----------
 ### combined
@@ -100,7 +101,7 @@ data <- zori %>%
 
 Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
 
-```{r message=FALSE}
+```{r }
 ### -----------
 ### Trend plot
 ###
@@ -127,7 +128,7 @@ data %>%
 ```
 
 
-```{r message=FALSE}
+```{r }
 ### ------------------
 ### Cleveland Dot Plot
 ### 
@@ -135,7 +136,7 @@ cleveland <-
   data %>%
   filter(year == 2017) %>%
   ungroup() %>%
-  slice_max(order_by = zori_avg - hud_avg, n = 5, with_ties = FALSE) %>%
+  slice_max(order_by = zori_avg - hud_avg, n = 15, with_ties = FALSE) %>%
   pivot_longer(cols = c(zori_avg:hud_avg),
                names_to = "source",
                values_to = "rent") %>%
@@ -151,7 +152,7 @@ cleveland
 ```
 
 
-```{r message=FALSE}
+```{r }
 ### --------------
 ### ZIP/Rent distribution plot
 
@@ -169,7 +170,7 @@ data %>%
   facet_wrap(~year)
 ```
 
-```{r message=FALSE}
+```{r }
 ### ------------------
 ### Year-over-Year difference map
 ### Animation of a map
