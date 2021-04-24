@@ -11,6 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(gganimate) # Used to create an animated plot
 library(here)
+library(patchwork) # Used to arrange plots as one image
 library(sf) # Used to mainpulate the spatial features
 library(tidycensus) # Used to pull census data 
 library(tidyverse)
@@ -109,7 +110,7 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 ### -----------
 ### Trend plot
 ###
-# Shows the parallel trend lines between observed rents and HUD's FMR values 
+# Shows the parallel aggregate trend lines between observed rents and HUD's FMR values 
 # average across ZIP codes observed in data. We need to explain what this is,
 # and why it's the case. It's because FMR is derived from actual rents, and
 # the process for determining FMR excludes the newest housing stock (buildings
@@ -136,8 +137,7 @@ data %>%
 ### ------------------
 ### Cleveland Dot Plot
 ### 
-cleveland <-
-  data %>%
+data %>%
   filter(year == 2017) %>%
   ungroup() %>%
   slice_max(order_by = zori_avg - hud_avg, n = 15, with_ties = FALSE) %>%
@@ -152,7 +152,6 @@ cleveland <-
        x = "ZIP",
        y = "Rent",
        color = "Source")
-cleveland
 ```
 
 # Exploring Change in Rent Valuations
@@ -218,7 +217,8 @@ The following distribution plots help us understand that this is an effect of HU
 # However, since $1000 in 2014 is equivalent to $1118.87 today we can ignore it without
 # running into any major methodological issues.
 
-data %>%
+# NOTE: This could be animated too 
+data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg),
          HUD = mean(hud_avg)) %>%
@@ -232,19 +232,68 @@ data %>%
   facet_wrap(~year)
 ```
 
+# Incorporating Census Data
+
 We'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
 
 ```{r}
+# This entire section could be cleaned up, but it works.
+
 source(here("ingest_census_data.R"))
 
 zips <- data %>%
   pull(RegionName) %>%
   unique()
 
-acs_2014 <- acs5_pull(2014, zips)
+acs_2014 <- acs5_pull(2014, zips) %>%
+  # Including zips in the function call is supposed to prevent us needing
+  # to filter by zip, but it's not working.
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
 
-acs_2019 <- acs5_pull(2019, zips)
+acs_2019 <- acs5_pull(2019, zips) %>%
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
+
+# TODO: This can be put into one dataset so that we can
+# analyze change over time
+data_2014 <- data %>%
+  filter(year == 2014) %>%
+  left_join(acs_2014, by = c("RegionName" = "ZIP", "year"))
+
+data_2019 <- data %>%
+  filter(year == 2019) %>%
+  left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
 ```
+
+## Plotting Associations
+
+```{r}
+### -------------
+### coor plot
+### ZORI and hh_income
+
+plot1 <- data_2014 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2014",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot2 <- data_2019 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2019",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot1 + plot2
+```
+
 
 ```{r}
 ### --------------
@@ -256,3 +305,10 @@ acs_2019 <- acs5_pull(2019, zips)
 
 # Limitations
 
+## Missingness in data
+
+# Conclusions
+
+## Findings
+
+## Further Questions
