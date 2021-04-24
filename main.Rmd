@@ -158,8 +158,59 @@ cleveland
 
 
 ```{r }
+### -----------------------------
+### Year-over-Year difference map
+### Animation
+
+# Transforming to this CRS makes the map look "normal"
+crs <- 3435 # coordinate reference system: IL NAD83 East
+
+# Get Cook County geometry to put zctas in context
+cook_county <- counties(state = "IL", cb = T) %>%
+  filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
+  select(NAME, geometry) %>%
+  st_transform(crs)
+
+cook_coords <- st_coordinates(cook_county)
+
+# Create filter for ZIP geom pull
+starts_with <- data %>% 
+  pull(RegionName) %>% # Vectorize the column
+  str_extract(pattern = "[0-9]{2}") %>%
+  unique() # c("53", "60") 
+
+### Get ZCTA geometry
+zcta <- zctas(cb = T, starts_with = starts_with) %>%
+  select(GEOID10, geometry) %>%
+  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
+  st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
+                         # that make the map less easy to digest. This removes them
+
+map_anim <- data %>%
+  # NOTE: Because of the way this is calculated we don't 
+  # have any indication if the change is due to a change in 
+  # ZORI or HUD values
+  mutate(diff = zori_avg - hud_avg) %>% 
+  left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
+  ggplot(aes(geometry = geometry)) +
+  geom_sf(data = cook_county) + # County boundary
+  geom_sf(aes(fill = diff)) + # ZCTA map
+  labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
+       caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
+       fill = "ZORI - HUD") + 
+  scale_fill_continuous() +
+  theme_minimal() +
+  transition_manual(year) # transition_time doesn't work well with sf for some reason
+
+animate(map_anim, fps = 1, nframes = 6)
+```
+
+The above map shows that there has been a long-term change in the difference between the ZORI and HUD FMR values. The below distribution helps us understand that this is an effect of HUD FMR increasing, not ZORI decreasing.
+
+```{r }
 ### --------------
 ### ZIP/Rent distribution plot
+###
 
 data %>%
   group_by(RegionName, year) %>%
@@ -173,49 +224,6 @@ data %>%
        x = "Rent", 
        y = "Density") +
   facet_wrap(~year)
-```
-
-```{r }
-### ------------------
-### Year-over-Year difference map
-### Animation of a map
-
-crs <- 3435 # coordinate reference system: IL NAD83 East
-
-# Get Cook County geometry to put zctas in context
-cook_county <- counties(state = "IL", cb = T) %>%
-  filter(NAME == "Cook") %>%
-  select(NAME, geometry) %>%
-  st_transform(3435)
-
-cook_coords <- st_coordinates(cook_county)
-
-### Get ZCTA geometry
-starts_with <- data %>% 
-  pull(RegionName) %>% 
-  str_extract(pattern = "[0-9]{2}") %>% 
-  unique() # c("53", "60") 
-
-zcta <- zctas(cb = T, starts_with = starts_with) %>%
-  select(GEOID10, geometry) %>%
-  st_transform(3435) %>% # Without this transformation to ILNAD83 the map looks weird
-  st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
-                         # that make the map less easy to follow. 
-
-map_anim <- data %>%
-  mutate(diff = zori_avg - hud_avg) %>%
-  left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
-  ggplot(aes(geometry = geometry)) +
-  geom_sf(data = cook_county) + # County boundary
-  geom_sf(aes(fill = diff)) + # ZCTA map
-  labs(title = "Year: {current_frame}",
-       caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
-       fill = "ZORI - HUD") + # Adds the year value to the title through interpolation
-  scale_fill_continuous() +
-  theme_minimal() +
-  transition_manual(year)
-
-animate(map_anim, fps = 1, nframes = 6)
 ```
 
 Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
