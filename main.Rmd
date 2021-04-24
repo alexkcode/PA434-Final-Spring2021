@@ -16,7 +16,6 @@ library(tidycensus) # Used to pull census data
 library(tidyverse)
 library(tigris) # Used to pull spatial features
 
-
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
 # Source: https://www.huduser.gov/portal/datasets/fmr.html
@@ -156,6 +155,9 @@ cleveland <-
 cleveland
 ```
 
+# Exploring Change in Rent Valuations
+
+The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
 
 ```{r }
 ### -----------------------------
@@ -205,12 +207,16 @@ map_anim <- data %>%
 animate(map_anim, fps = 1, nframes = 6)
 ```
 
-The above map shows that there has been a long-term change in the difference between the ZORI and HUD FMR values. The below distribution helps us understand that this is an effect of HUD FMR increasing, not ZORI decreasing.
+The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
 ```{r }
 ### --------------
 ### ZIP/Rent distribution plot
 ###
+
+# NOTE: These values aren't inflation adjusted, which would be important for a more in-depth analysis. 
+# However, since $1000 in 2014 is equivalent to $1118.87 today we can ignore it without
+# running into any major methodological issues.
 
 data %>%
   group_by(RegionName, year) %>%
@@ -226,18 +232,10 @@ data %>%
   facet_wrap(~year)
 ```
 
-Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
+We'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
 
 ```{r}
-# TODO: Time permitting, link existing data with census data on socioeconomic characteristics
 
-# ACS tables being queried by TidyCensus
-tables <- c("Sex by Age" = "B01001",
-            "Race" = "B02001",
-            "Median Household Income" = "B19013"
-            # Housing Characteristics
-            # Rent burden
-            )
 ```
 
 ```{r}
