@@ -45,33 +45,35 @@ acs5_vars <- c(
 # Pulling data for Zip Code tabulation areas
 # user provides a list of ZCTAs and the year
 acs5_pull <- function(year, zctas) {
-  get_acs(survey = "acs5",
-          geography = "zcta",
-          variables = acs5_vars,
-          zctas = zctas,
-          year = year,
-          output = "wide") %>%
-  # output = "wide" suffixes variables with M(argin of error) and E(stimate)
-  select(GEOID, NAME, ends_with("E")) %>%
-  # remove the suffixes
-  rename_with(.fn = ~ gsub("E$", "", .x),
-              .cols = -c(GEOID, NAME)) %>%
-  # Set the final data to return
-  mutate(
-    GEOID,
-    NAME,
-    year = year,
-    tract_gini_index = gini_index,
-    # tract_median_gross_rent = median_gross_rent,
-    tract_vacant_housing_units = vacant_housing_units / total_housing_units,
-    tract_percent_ba = (ba_households_own + ba_households_rent) / total_households,
-    tract_percent_below_poverty = families_below_poverty_level / total_families,
-    tract_percent_unaffordable = (household_rentburden_30_34 + household_rentburden_35_39 + 
-                                    household_rentburden_40_49 + household_rentburden_grtoeq_50) / total_households_c,
-    tract_median_hh_income = median_hh_income,
-    tract_percent_snap_recipients = snap_households_b / total_households_b,
-    .keep = "none"
-  )
+  df <- get_acs(survey = "acs5",
+                geography = "zcta",
+                variables = acs5_vars,
+                zctas = zctas,
+                year = year,
+                output = "wide") %>%
+    # output = "wide" suffixes variables with M(argin of error) and E(stimate)
+    select(GEOID, NAME, ends_with("E")) %>%
+    # remove the suffixes
+    rename_with(.fn = ~ gsub("E$", "", .x),
+                .cols = -c(GEOID, NAME)) %>%
+    # Set the final data to return
+    mutate(
+      GEOID,
+      NAME,
+      year = year,
+      gini_index = gini_index,
+      # zip_median_gross_rent = median_gross_rent,
+      vacant_housing_units = vacant_housing_units / total_housing_units,
+      percent_ba = (ba_households_own + ba_households_rent) / total_households,
+      percent_below_poverty = families_below_poverty_level / total_families,
+      percent_unaffordable = (household_rentburden_30_34 + household_rentburden_35_39 + 
+                                household_rentburden_40_49 + household_rentburden_grtoeq_50) / total_households_c,
+      median_hh_income = median_hh_income,
+      percent_snap_recipients = snap_households_b / total_households_b,
+      .keep = "none"
+    )
   
   message(paste0("ACS ", year, " 5-year estimates pulled."))
+  
+  return(df)
 }
