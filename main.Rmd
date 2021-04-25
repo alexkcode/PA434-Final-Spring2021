@@ -135,14 +135,22 @@ data %>%
 cleveland <-
   data %>%
   filter(year == 2017) %>%
+  # mutate(diff = zori_avg - hud_avg) %>%
   ungroup() %>%
-  slice_max(order_by = zori_avg - hud_avg, n = 15, with_ties = FALSE) %>%
+  # arrange(desc(zori_avg - hud_avg)) %>%
+  # slice_head(n = 5) %>%
+  slice_max(order_by = zori_avg - hud_avg, n = 5, with_ties = FALSE) %>%
   pivot_longer(cols = c(zori_avg:hud_avg),
                names_to = "source",
                values_to = "rent") %>%
-  ggplot(aes(x = rent, y = RegionName)) +
+  ggplot(aes(x = reorder(RegionName, rent), y = rent)) +
   geom_line(aes(group = RegionName), size = 1) +
+  # ggplot(aes(x = RegionName)) +
+  # geom_line(aes(y = hud_avg, yend = zori_avg), size = 2) +
+  # geom_point(aes(y = zori_avg), size = 5, color = "blue") +
+  # geom_point(aes(y = hud_avg), size = 5) +
   geom_point(aes(color = source), size = 5) +
+  coord_flip() +
   labs(title = "Difference in Rents Across Zip Codes",
        subtitle = "HUD versus Zillow",
        x = "ZIP",
