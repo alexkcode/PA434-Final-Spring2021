@@ -9,10 +9,13 @@ output:
 
 ```{r setup,  message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(gganimate) # Used to create an animated plot
 library(here)
-library(tidycensus)
+library(patchwork) # Used to arrange plots as one image
+library(sf) # Used to mainpulate the spatial features
+library(tidycensus) # Used to pull census data 
 library(tidyverse)
-
+library(tigris) # Used to pull spatial features
 
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
@@ -88,6 +91,8 @@ zori <- zori_staging %>%
   summarize(rent_avg = mean(rent, na.rm = TRUE)) %>%
   ungroup()
 
+rm(zori_staging)
+
 ### -----------
 ### combined
 ###
@@ -105,7 +110,7 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 ### -----------
 ### Trend plot
 ###
-# Shows the parallel trend lines between observed rents and HUD's FMR values 
+# Shows the parallel aggregate trend lines between observed rents and HUD's FMR values 
 # average across ZIP codes observed in data. We need to explain what this is,
 # and why it's the case. It's because FMR is derived from actual rents, and
 # the process for determining FMR excludes the newest housing stock (buildings
@@ -113,7 +118,7 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 data %>%
   group_by(year) %>%
   summarize(ZORI = mean(zori_avg),
-         HUD = mean(hud_avg)) %>%
+            HUD = mean(hud_avg)) %>%
   pivot_longer(cols = c(ZORI:HUD),
                names_to = "index",
                values_to = "rent") %>%
@@ -132,8 +137,7 @@ data %>%
 ### ------------------
 ### Cleveland Dot Plot
 ### 
-cleveland <-
-  data %>%
+data %>%
   filter(year == 2017) %>%
   # mutate(diff = zori_avg - hud_avg) %>%
   ungroup() %>%
@@ -156,15 +160,73 @@ cleveland <-
        x = "ZIP",
        y = "Rent",
        color = "Source")
-cleveland
 ```
 
+# Exploring Change in Rent Valuations
+
+The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
+
+```{r }
+### -----------------------------
+### Year-over-Year difference map
+### Animation
+
+# Transforming to this CRS makes the map look "normal"
+crs <- 3435 # coordinate reference system: IL NAD83 East
+
+# Get Cook County geometry to put zctas in context
+cook_county <- counties(state = "IL", cb = T) %>%
+  filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
+  select(NAME, geometry) %>%
+  st_transform(crs)
+
+cook_coords <- st_coordinates(cook_county)
+
+# Create filter for ZIP geom pull
+starts_with <- data %>% 
+  pull(RegionName) %>% # Vectorize the column
+  str_extract(pattern = "[0-9]{2}") %>%
+  unique() # c("53", "60") 
+
+### Get ZCTA geometry
+zcta <- zctas(cb = T, starts_with = starts_with) %>%
+  select(GEOID10, geometry) %>%
+  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
+  st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
+                         # that make the map less easy to digest. This removes them
+
+map_anim <- data %>%
+  # NOTE: Because of the way this is calculated we don't 
+  # have any indication if the change is due to a change in 
+  # ZORI or HUD values
+  mutate(diff = zori_avg - hud_avg) %>% 
+  left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
+  ggplot(aes(geometry = geometry)) +
+  geom_sf(data = cook_county) + # County boundary
+  geom_sf(aes(fill = diff)) + # ZCTA map
+  labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
+       caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
+       fill = "ZORI - HUD") + 
+  scale_fill_continuous() +
+  theme_minimal() +
+  transition_manual(year) # transition_time doesn't work well with sf for some reason
+
+animate(map_anim, fps = 1, nframes = 6)
+```
+
+The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
 ```{r }
 ### --------------
 ### ZIP/Rent distribution plot
+###
 
-data %>%
+# NOTE: These values aren't inflation adjusted, which would be important for a more in-depth analysis. 
+# However, since $1000 in 2014 is equivalent to $1118.87 today we can ignore it without
+# running into any major methodological issues.
+
+# NOTE: This could be animated too 
+data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg),
          HUD = mean(hud_avg)) %>%
@@ -178,27 +240,68 @@ data %>%
   facet_wrap(~year)
 ```
 
-```{r }
-### ------------------
-### Year-over-Year difference map
-### Animation of a map
+# Incorporating Census Data
 
-
-```
-
-Finally, we'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
+We'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
 
 ```{r}
-# TODO: Time permitting, link existing data with census data on socioeconomic characteristics
+# This entire section could be cleaned up, but it works.
 
-# ACS tables being queried by TidyCensus
-tables <- c("Sex by Age" = "B01001",
-            "Race" = "B02001",
-            "Median Household Income" = "B19013"
-            # Housing Characteristics
-            # Rent burden
-            )
+source(here("ingest_census_data.R"))
+
+zips <- data %>%
+  pull(RegionName) %>%
+  unique()
+
+acs_2014 <- acs5_pull(2014, zips) %>%
+  # Including zips in the function call is supposed to prevent us needing
+  # to filter by zip, but it's not working.
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
+
+acs_2019 <- acs5_pull(2019, zips) %>%
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
+
+# TODO: This can be put into one dataset so that we can
+# analyze change over time
+data_2014 <- data %>%
+  filter(year == 2014) %>%
+  left_join(acs_2014, by = c("RegionName" = "ZIP", "year"))
+
+data_2019 <- data %>%
+  filter(year == 2019) %>%
+  left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
 ```
+
+## Plotting Associations
+
+```{r}
+### -------------
+### coor plot
+### ZORI and hh_income
+
+plot1 <- data_2014 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2014",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot2 <- data_2019 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2019",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot1 + plot2
+```
+
 
 ```{r}
 ### --------------
@@ -210,3 +313,10 @@ tables <- c("Sex by Age" = "B01001",
 
 # Limitations
 
+## Missingness in data
+
+# Conclusions
+
+## Findings
+
+## Further Questions
