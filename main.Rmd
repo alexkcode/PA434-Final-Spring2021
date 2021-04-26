@@ -9,7 +9,8 @@ output:
 
 ```{r setup,  message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
-library(gganimate) # Used to create an animated plot
+library(gganimate) # Used to create an animated plot, 
+# install.packages('gifski') if you don't have it installed
 library(ggrepel) # Used to create cleveland dot plot
 library(here)
 library(patchwork) # Used to arrange plots as one image
@@ -147,7 +148,7 @@ neighborhoods <-
     "60610" = "Near Northside, Cabrini Green",
     "60126" = "Elmhurst",
     "60642" = "River West",
-    "60647" = "Palmer Square",
+    "60647" = "Logan Square",
     "60616" = "Chinatown, Armour Square",
     "60525" = "La Grange",
     "60612" = "East Garfield Park",
@@ -214,8 +215,6 @@ cook_county <- counties(state = "IL", cb = T, progress_bar = F) %>%
   select(NAME, geometry) %>%
   st_transform(crs)
 
-cook_coords <- st_coordinates(cook_county)
-
 # Create filter for ZIP geom pull
 starts_with <- data %>% 
   pull(RegionName) %>% # Vectorize the column
@@ -249,7 +248,7 @@ map_anim <- data %>%
   labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
        caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
        fill = "ZORI - HUD") + 
-  scale_fill_continuous() +
+  scale_fill_viridis_c() +
   theme_minimal() +
   transition_manual(year) # transition_time doesn't work well with sf for some reason
 
@@ -269,7 +268,7 @@ The following distribution plots help us understand that this is an effect of HU
 # running into any major methodological issues.
 
 # NOTE: This could be animated too
-data %>% 
+dist_anim <- data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg),
          HUD = mean(hud_avg)) %>%
@@ -280,7 +279,9 @@ data %>%
        subtitle = "blue is ZORI, red is HUD",
        x = "Rent", 
        y = "Density") +
-  facet_wrap(~year)
+  transition_manual(year)
+
+animate(dist_anim, fps = 1, nframes = 6)
 ```
 
 # Incorporating Census Data
@@ -361,5 +362,7 @@ plot1 + plot2
 # Conclusions
 
 ## Findings
+
+HUD FMR jumped significantly from 2017 to 2018. We should look into why that happened. 
 
 ## Further Questions
