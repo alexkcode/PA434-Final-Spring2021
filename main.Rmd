@@ -117,8 +117,8 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 # constructed in the past 2 years). 
 data %>%
   group_by(year) %>%
-  summarize(ZORI = mean(zori_avg),
-            HUD = mean(hud_avg)) %>%
+  summarize(ZORI = mean(zori_avg, na.rm = TRUE),
+            HUD = mean(hud_avg, na.rm = TRUE)) %>%
   pivot_longer(cols = c(ZORI:HUD),
                names_to = "index",
                values_to = "rent") %>%
