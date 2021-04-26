@@ -10,6 +10,7 @@ output:
 ```{r setup,  message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(gganimate) # Used to create an animated plot
+library(ggrepel) # Used to create cleveland dot plot
 library(here)
 library(patchwork) # Used to arrange plots as one image
 library(sf) # Used to mainpulate the spatial features
@@ -117,8 +118,8 @@ Once we have both our data fully cleaned we'll want to do some basic visualizati
 # constructed in the past 2 years). 
 data %>%
   group_by(year) %>%
-  summarize(ZORI = mean(zori_avg, na.rm = TRUE),
-            HUD = mean(hud_avg, na.rm = TRUE)) %>%
+  summarize(ZORI = mean(zori_avg, na.rm = T),
+            HUD = mean(hud_avg, na.rm = T)) %>%
   pivot_longer(cols = c(ZORI:HUD),
                names_to = "index",
                values_to = "rent") %>%
@@ -137,7 +138,7 @@ data %>%
 ### ------------------
 ### Cleveland Dot Plot
 ### 
-library(ggrepel)
+
 
 neighborhoods <-
   list(
@@ -197,18 +198,18 @@ cleveland_plot
 
 # Exploring Change in Rent Valuations
 
-The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
+There may be a spatial component to these FMR valuations compared with observed rent. This chunk maps the data to the ZIP code geometry provided by `tigris`.
 
 ```{r }
 ### -----------------------------
 ### Year-over-Year difference map
-### Animation
+### Prepare data
 
 # Transforming to this CRS makes the map look "normal"
 crs <- 3435 # coordinate reference system: IL NAD83 East
 
 # Get Cook County geometry to put zctas in context
-cook_county <- counties(state = "IL", cb = T) %>%
+cook_county <- counties(state = "IL", cb = T, progress_bar = F) %>%
   filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
   select(NAME, geometry) %>%
   st_transform(crs)
@@ -222,11 +223,19 @@ starts_with <- data %>%
   unique() # c("53", "60") 
 
 ### Get ZCTA geometry
-zcta <- zctas(cb = T, starts_with = starts_with) %>%
+zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   select(GEOID10, geometry) %>%
   st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
                          # that make the map less easy to digest. This removes them
+```
+
+The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
+
+```{r }
+### -----------------------------
+### Year-over-Year difference map
+### Animation
 
 map_anim <- data %>%
   # NOTE: Because of the way this is calculated we don't 
@@ -247,6 +256,7 @@ map_anim <- data %>%
 animate(map_anim, fps = 1, nframes = 6)
 ```
 
+
 The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
 ```{r }
@@ -258,7 +268,7 @@ The following distribution plots help us understand that this is an effect of HU
 # However, since $1000 in 2014 is equivalent to $1118.87 today we can ignore it without
 # running into any major methodological issues.
 
-# NOTE: This could be animated too 
+# NOTE: This could be animated too
 data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg),
