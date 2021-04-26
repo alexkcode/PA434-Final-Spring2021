@@ -209,7 +209,7 @@ There may be a spatial component to these FMR valuations compared with observed 
 crs <- 3435 # coordinate reference system: IL NAD83 East
 
 # Get Cook County geometry to put zctas in context
-cook_county <- counties(state = "IL", cb = T) %>%
+cook_county <- counties(state = "IL", cb = T, progress_bar = F) %>%
   filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
   select(NAME, geometry) %>%
   st_transform(crs)
@@ -223,7 +223,7 @@ starts_with <- data %>%
   unique() # c("53", "60") 
 
 ### Get ZCTA geometry
-zcta <- zctas(cb = T, starts_with = starts_with) %>%
+zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   select(GEOID10, geometry) %>%
   st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
@@ -232,7 +232,7 @@ zcta <- zctas(cb = T, starts_with = starts_with) %>%
 
 The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
 
-```{r}
+```{r }
 ### -----------------------------
 ### Year-over-Year difference map
 ### Animation
