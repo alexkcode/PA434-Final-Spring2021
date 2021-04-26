@@ -270,8 +270,8 @@ The following distribution plots help us understand that this is an effect of HU
 # NOTE: This could be animated too
 dist_anim <- data %>% 
   group_by(RegionName, year) %>%
-  summarize(ZORI = mean(zori_avg),
-         HUD = mean(hud_avg)) %>%
+  summarize(ZORI = mean(zori_avg, na.rm = T),
+         HUD = mean(hud_avg, na.rm = T)) %>%
   ggplot() +
   geom_density(aes(x = ZORI), fill = "blue", alpha = .5) +
   geom_density(aes(x = HUD), fill = "red", alpha = .5) +
@@ -294,7 +294,6 @@ We'll want to take the above analysis and tie it back to the policy implications
 source(here("ingest_census_data.R"))
 
 zips <- data %>%
-  pull(RegionName) %>%
   unique()
 
 acs_2014 <- acs5_pull(2014, zips) %>%
