@@ -294,6 +294,7 @@ We'll want to take the above analysis and tie it back to the policy implications
 source(here("ingest_census_data.R"))
 
 zips <- data %>%
+  pull(RegionName) %>%
   unique()
 
 acs_2014 <- acs5_pull(2014, zips) %>%
