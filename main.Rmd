@@ -134,69 +134,6 @@ data %>%
   theme_minimal()
 ```
 
-
-```{r }
-### ------------------
-### Cleveland Dot Plot
-### 
-
-
-neighborhoods <-
-  list(
-    "60045" = "Lake County",
-    "60602" = "Downtown",
-    "60610" = "Near Northside, Cabrini Green",
-    "60126" = "Elmhurst",
-    "60642" = "River West",
-    "60647" = "Logan Square",
-    "60616" = "Chinatown, Armour Square",
-    "60525" = "La Grange",
-    "60612" = "East Garfield Park",
-    "60608" = "Pilsen"
-  )
-
-cleveland_data <-
-  data %>%
-  filter(year == 2017) %>%
-  # can't do functions in label assignments so gotta do it here
-  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
-  ungroup() %>%
-  slice_max(order_by = diff, n = 10, with_ties = FALSE) %>%
-  pivot_longer(cols = c(zori_avg:hud_avg),
-               names_to = "source",
-               values_to = "rent") %>%
-  mutate(neighborhood = neighborhoods[RegionName])
-
-cleveland_plot <- ggplot(data = cleveland_data,
-                         mapping = aes(x = reorder(RegionName, rent), 
-                                       y = rent)) +
-  geom_line(aes(group = RegionName), size = 1) +
-  geom_point(aes(color = source), size = 5) +
-  geom_text(data = cleveland_data %>% filter(source == "zori_avg"),
-            mapping = aes(color = source,
-                          label = paste0("+",scales::percent(x = diff, 
-                                                             accuracy = 0.01))),
-            size = 3.5,
-            hjust = -0.25) +
-  geom_text(data = cleveland_data %>% filter(source == "hud_avg"),
-            mapping = aes(label = neighborhood),
-            size = 3.5,
-            hjust = 0,
-            nudge_x = 0.5) +
-  scale_y_continuous(labels = scales::dollar_format(), limits = c(800, 3200)) +
-  coord_flip() +
-  labs(title = "Zip Codes With Rent Furthest From Fair Market Rate",
-       subtitle = "HUD versus Zillow",
-       x = "ZIP",
-       y = "Rent Index",
-       color = "Source") +
-  scale_colour_discrete(labels = c("HUD", "Zillow"))
-
-rm(cleveland_data)
-
-cleveland_plot
-```
-
 # Exploring Change in Rent Valuations
 
 There may be a spatial component to these FMR valuations compared with observed rent. This chunk maps the data to the ZIP code geometry provided by `tigris`.
@@ -344,6 +281,165 @@ plot2 <- data_2019 %>%
       y = "Zillow Observed Rent Index Value")
 
 plot1 + plot2
+```
+
+```{r }
+### ------------------
+### Cleveland Dot Plot
+### Animated
+
+neighborhoods <-
+  list(
+    "60045" = "Lake County",
+    "60602" = "Downtown",
+    "60610" = "Near Northside, Cabrini Green",
+    "60126" = "Elmhurst",
+    "60642" = "River West",
+    "60647" = "Logan Square",
+    "60616" = "Chinatown, Armour Square",
+    "60525" = "La Grange",
+    "60612" = "East Garfield Park",
+    "60608" = "Pilsen"
+  )
+
+cleveland_data <-
+  data %>%
+  # can't do functions in label assignments so gotta do it here
+  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
+  ungroup() %>%
+  filter(RegionName %in% names(neighborhoods)) %>%
+  pivot_longer(cols = c(zori_avg:hud_avg),
+               names_to = "source",
+               values_to = "rent") %>%
+  mutate(neighborhood = neighborhoods[RegionName])
+
+cleveland_plot <- ggplot(data = cleveland_data,
+                         mapping = aes(x = reorder(RegionName, rent), 
+                                       y = rent)) +
+  geom_line(aes(group = RegionName), size = 1) +
+  geom_point(aes(color = source), size = 5) +
+  geom_text(data = cleveland_data %>% filter(source == "zori_avg"),
+            mapping = aes(color = source,
+                          label = paste0("+",scales::percent(x = diff, 
+                                                             accuracy = 0.01))),
+            size = 3.5,
+            hjust = -0.25) +
+  geom_text(data = cleveland_data %>% filter(source == "hud_avg"),
+            mapping = aes(label = neighborhood),
+            size = 3.5,
+            hjust = 0,
+            nudge_x = 0.5) +
+  scale_y_continuous(labels = scales::dollar_format(), limits = c(500, 3500)) +
+  coord_flip() +
+  labs(title = "Zip Codes With Rent Furthest From Fair Market Rate",
+       subtitle = "HUD versus Zillow with Median Income in {current_frame}",
+       x = "ZIP",
+       y = "Rent Index",
+       color = "Source") +
+  scale_colour_discrete(labels = c("HUD", "Zillow")) +
+  transition_manual(year)
+
+animate(cleveland_plot, fps = 1, nframes = 6)
+
+rm(cleveland_data)
+```
+
+```{r fig.width=10, fig.height=11}
+### ------------------
+### Cleveland Dot Plot 
+### Facet wrapped
+
+neighborhoods <-
+  list(
+    "60045" = "Lake County",
+    "60602" = "Downtown",
+    "60610" = "Near Northside, Cabrini Green",
+    "60126" = "Elmhurst",
+    "60642" = "River West",
+    "60647" = "Logan Square",
+    "60616" = "Chinatown, Armour Square",
+    "60525" = "La Grange",
+    "60612" = "East Garfield Park",
+    "60608" = "Pilsen"
+  )
+
+cleveland_data <-
+  data %>%
+  # can't do functions in label assignments so gotta do it here
+  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
+  ungroup() %>%
+  filter(RegionName %in% names(neighborhoods) & year %in% c(2014,2019)) %>%
+  pivot_longer(cols = c(zori_avg:hud_avg),
+               names_to = "source",
+               values_to = "rent") %>%
+  mutate(neighborhood = neighborhoods[RegionName])
+
+acs_to_year_mapping <- list(
+  "2014" = data_2014,
+  "2019" = data_2019
+)
+
+# still figuring out the best aesthetic 
+cleveland_plot <- function(input_data, yr, acs) {
+  plot_data <- 
+    input_data %>% 
+    left_join(acs[[as.character(yr)]], by = c("RegionName", "year")) %>%
+    filter(year == yr) %>%
+    mutate(income_diff = rent/(median_hh_income/12),
+           burden = cut(income_diff,
+                        breaks=c(0, 0.3, 0.5, 1),
+                        labels=c("low","medium","high")))
+  
+  print(plot_data)
+  
+  ggplot(data = plot_data,
+         # mapping = aes(x = reorder(RegionName, rent), y = rent)) +
+         mapping = aes(x = RegionName, y = rent)) +
+    geom_line(aes(group = RegionName, color = burden), size = 1) +
+    # geom_point(aes(y = median_hh_income/12), size = 5, color = "blue") +
+    # geom_point(aes(y = income_diff), size = 5, color = "blue") +
+    geom_point(aes(shape = source), size = 5) +
+    geom_text(
+      data = plot_data %>% filter(source == "zori_avg"),
+      mapping = aes(
+        # color = source,
+                    label = paste0(
+                      "+", scales::percent(x = diff,
+                                           accuracy = 0.01)
+                    )),
+      size = 3.5,
+      hjust = -0.25
+    ) +
+    geom_text(
+      data = plot_data %>% filter(source == "hud_avg"),
+      mapping = aes(label = neighborhood),
+      size = 3.5,
+      hjust = 0,
+      nudge_x = 0.5
+    ) +
+    scale_y_continuous(labels = scales::dollar_format(),
+                       limits = c(800, 3200)) +
+    # ) +
+    coord_flip() +
+    labs(
+      title = "Zip Codes With Rent Furthest From Fair Market Rate",
+      subtitle = "HUD versus Zillow with Average Monthly Median Income",
+      x = "ZIP",
+      y = "Rent Index",
+      shape = "Source",
+      color = "Rent Burden"
+    ) 
+  # + scale_colour_discrete(labels = c("HUD", "Zillow"))
+}
+
+library(gridExtra)
+
+grid.arrange(
+  cleveland_plot(cleveland_data, 2014, acs_to_year_mapping), 
+  cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
+)
+
+# rm(cleveland_data)
 ```
 
 # Limitations
