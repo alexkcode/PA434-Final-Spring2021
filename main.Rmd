@@ -9,12 +9,12 @@ output:
 
 ```{r setup,  message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
-library(gganimate) # Used to create an animated plot, 
-# install.packages('gifski') if you don't have it installed
+library(gganimate) # Used to create an animated plot
+# install.packages('gifski') necessary for animation to compile
 library(ggrepel) # Used to create cleveland dot plot
 library(here)
 library(patchwork) # Used to arrange plots as one image
-library(sf) # Used to mainpulate the spatial features
+library(sf) # Used to manipulate the spatial data for maps
 library(tidycensus) # Used to pull census data 
 library(tidyverse)
 library(tigris) # Used to pull spatial features
@@ -24,32 +24,38 @@ library(tigris) # Used to pull spatial features
 # Source: https://www.huduser.gov/portal/datasets/fmr.html
 # Methodology: https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf
 # NOTE: some years have more ZIP codes than others in this data
-# TODO: Find out which ZIPs are included in all data
 source(here("ingest_hud_data.R"))
 
 # Zillow Observed Rent Index (ZORI) data
 # Source: https://www.zillow.com/research/data/
-# NOTE: Not every ZIP code in Chicago is included in this data, we'll probably have to 
-# identify some set of ZIP codes in both datasets and use those
-# as a case study
+# NOTE: Not every ZIP code in Chicago is included in this data
 zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %>%
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
 ```
 
 # Background
 
-Why is affordable housing important? Housing as a social determinant of health. Affordable housing being related to better health outcomes for tenants. Evictions being related to poor health outcomes. Rental affordability as the average rent in relation to what HUD determines to be the Fair Market Rent, and what that means about affordability. Fair Market Rent, or FMR, is determined by a combination of a Census survey of rents paid by recent movers, rent inflation adjustment and forecasted expected growth.
+Housing is a [social determinant of health](https://health.gov/healthypeople/objectives-and-data/social-determinants-health). Affordable housing is related to better [health outcomes for tenants](https://www.rupco.org/wp-content/uploads/pdfs/The-Impacts-of-Affordable-Housing-on-Health-CenterforHousingPolicy-Maqbool.etal.pdf), freeing money up for better nutrition, daycare and healthcare, and other necesities for individual wellbeing. Evictions are related to [poor health outcomes](https://www.bu.edu/sph/news/articles/2018/the-hidden-health-crisis-of-eviction/). Housing instability has been found to lead to higher stress levels, increased rates of depression and anxiety, and increased likelihood of living in lower quality housing or homelessness. Because of this, it is important to understand current metrics for what constitutes affordable housing. This project explores housing affordability through federal government metrics used to calculate housing subsidies known as Fair Market Rent (FMR).
+
+Fair Market Rent is determined by a combination of a census survey of rents paid by recent movers, rent inflation adjustment, and forecasted expected growth in the rental housing market. FMR includes contract rent and utilities, ensuring that a full cost of base living necessities are captured in the metric. FMR calculations are made using American Community Survey from two years prior to the calculation and are primarily used to set public housing flat rates and Section 8 housing choice voucher payment standards. [Housing choice voucher recipients](https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf) and [public housing tenants](https://www.huduser.gov/periodicals/ushmc/spring95/spring95.html) make up approximately 3 million, or 2.5%, of United States households. Because of this scope, HUD FMR calculations can serve as a lense into the effectiveness of housing markets across the country in addressing issues of housing provision. 
 
 # Research Questions
 
 - Is the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in an area?
+- What have metrics for housing subsidies looked like over time?
 - If there is a difference between actual rents and Fair Market Rents as determined by HUD, what data can we use to explain those differences?
 
 # Data Plan
 
-Discrepancies in data availability. Some ZIP codes are missing values for some years in the ZORI data, some HUD data is missing data for ZIP Codes across years.
+To perform this analysis, we needed data from three sources: 
 
-Time permitting add census demographic data from the ACS.
+* Fair Market Rent (FMR) data from the United States Department of Housing and Urban Development (HUD)
+
+* Observed rent data provided by Zillow
+
+* Socio-economic data provided by the United States Census in their American Community Survey data product
+
+All of these data needed to be available at the same geographic level, and thankfully that provided no challenge as all of these data products are aggregated to the ZIP code level and the Metropolitan Statistical Area level. For this project we focused our efforts on ZIP codes within the City of Chicago. HUD FMR data is available through the [HUD Policy Development & Research Website](https://www.huduser.gov/portal/datasets/fmr.html)
 
 # Analysis Plan
 
