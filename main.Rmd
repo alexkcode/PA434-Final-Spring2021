@@ -3,8 +3,8 @@ title: "The Rent is Too Damn High"
 author: "Ethan Jantz & Alex Kwan"
 date: "4/17/2021"
 output:
-  html_document: default
-  pdf_document: default
+  html_document: 
+    code_folding: hide
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
