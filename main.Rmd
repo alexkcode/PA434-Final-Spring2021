@@ -344,11 +344,12 @@ animate(cleveland_plot, fps = 1, nframes = 6)
 rm(cleveland_data)
 ```
 
+### Socio-Economic Characteristic Context
 
 ```{r fig.width=10, fig.height=11, include = FALSE}
 ### ------------------
 ### Cleveland Dot Plot 
-### Facet wrapped
+### include ACS data
 
 neighborhoods <-
   list(
@@ -420,7 +421,7 @@ cleveland_plot <- function(input_data, yr, acs) {
                        limits = c(800, 3200)) +
     coord_flip() +
     labs(
-      title = "Zip Codes With Rent Furthest From Fair Market Rate",
+      title = paste0("Zip Codes With Rent Furthest From Fair Market Rate, ", yr),
       subtitle = "HUD versus Zillow with Average Monthly Median Income",
       x = "ZIP",
       y = "Rent Index",
@@ -431,18 +432,9 @@ cleveland_plot <- function(input_data, yr, acs) {
     scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
 }
 
-library(gridExtra)
 
-grid.arrange(
-  cleveland_plot(cleveland_data, 2014, acs_to_year_mapping),
-  cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
-)
-
-# rm(cleveland_data)
+cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
-
-
-### Socio-Economic Characteristic Context
 
 ```{r}
 ### -------------------
