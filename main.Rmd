@@ -151,8 +151,7 @@ acs_2019 <- acs5_pull(2019, zips) %>%
 
 data_2014 <- data %>%
   filter(year == 2014) %>%
-  left_join(acs_2014, by = c("RegionName" = "ZIP", "year")) %>%
-  
+  left_join(acs_2014, by = c("RegionName" = "ZIP", "year"))
 
 data_2019 <- data %>%
   filter(year == 2019) %>%
@@ -195,7 +194,9 @@ zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
 
 ## Analysis
 
+### Macro-Level Trends
 
+The following plot shows the aggregate trend lines of observed rents and FMR values. FMR values typically lag behind observed rents. This is due to the fact that HUD FMR values are calculated using rent estimates from ACS 5 year estimates from two years prior to the year of valuation. 
 
 ```{r }
 ### -----------
@@ -223,7 +224,7 @@ data %>%
   theme_minimal()
 ```
 
-# Exploring Change in Rent Valuations
+### Exploring Change in Rent Valuations
 
 The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
 
@@ -280,39 +281,7 @@ dist_anim <- data %>%
 animate(dist_anim, fps = 1, nframes = 6)
 ```
 
-# Incorporating Census Data
-
-We'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
-
-
-## Plotting Associations
-
-```{r}
-### -------------------
-### coor plot
-### diff and hh_income
-# TODO: Do the same with gini_index, percent_snap_recipients, and percent_black_pop
-
-plot1 <- data_2014 %>%
-  ggplot(aes(x = median_hh_income, y = zori_avg)) +
-  geom_jitter() +
-  geom_smooth(method = "lm") +
-  labs(title = "Observed Rents and Household Income, 2014",
-      subtitle = "for select ZIP Codes",
-      x = "Median Household Income",
-      y = "Zillow Observed Rent Index Value")
-
-plot2 <- data_2019 %>%
-  ggplot(aes(x = median_hh_income, y = zori_avg)) +
-  geom_jitter() +
-  geom_smooth(method = "lm") +
-  labs(title = "Observed Rents and Household Income, 2019",
-      subtitle = "for select ZIP Codes",
-      x = "Median Household Income",
-      y = "Zillow Observed Rent Index Value")
-
-plot1 + plot2
-```
+### Largest Differences in FMR Calculations and Observed Rents
 
 ```{r }
 ### ------------------
@@ -374,6 +343,7 @@ animate(cleveland_plot, fps = 1, nframes = 6)
 
 rm(cleveland_data)
 ```
+
 
 ```{r fig.width=10, fig.height=11, include = FALSE}
 ### ------------------
@@ -471,23 +441,52 @@ grid.arrange(
 # rm(cleveland_data)
 ```
 
-# Limitations
+
+### Socio-Economic Characteristic Context
+
+```{r}
+### -------------------
+### coor plot
+### diff and hh_income
+# TODO: Do the same with gini_index, percent_snap_recipients, and percent_black_pop
+
+plot1 <- data_2014 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2014",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot2 <- data_2019 %>%
+  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Rents and Household Income, 2019",
+      subtitle = "for select ZIP Codes",
+      x = "Median Household Income",
+      y = "Zillow Observed Rent Index Value")
+
+plot1 + plot2
+```
+
+# Conclusions
+
+## Limitations
 
 Differences between ZORI and FMR data, missing ZORI values for some months could effect the accuracy of 
 
-## Missingness in data
+### Missingness in data
 
 ```{r}
 # TODO: Visualize missingness in zori data. This could use zori_raw or zori_staging I think. Whichver works best
 ```
 
-
-# Conclusions
-
 ## Findings
 
 HUD FMR jumped significantly from 2017 to 2018. We should look into why that happened. 
 
-## Policy Implications
+### Policy Implications
 
-## Further Questions
+### Further Questions
