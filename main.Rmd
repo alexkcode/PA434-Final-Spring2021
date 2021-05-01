@@ -33,44 +33,56 @@ zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
 ```
 
-# Background
+# Introduction
 
 Housing is a [social determinant of health](https://health.gov/healthypeople/objectives-and-data/social-determinants-health). Affordable housing is related to better [health outcomes for tenants](https://www.rupco.org/wp-content/uploads/pdfs/The-Impacts-of-Affordable-Housing-on-Health-CenterforHousingPolicy-Maqbool.etal.pdf), freeing money up for better nutrition, daycare and healthcare, and other necesities for individual wellbeing. Evictions are related to [poor health outcomes](https://www.bu.edu/sph/news/articles/2018/the-hidden-health-crisis-of-eviction/). Housing instability has been found to lead to higher stress levels, increased rates of depression and anxiety, and increased likelihood of living in lower quality housing or homelessness. Because of this, it is important to understand current metrics for what constitutes affordable housing. This project explores housing affordability through federal government metrics used to calculate housing subsidies known as Fair Market Rent (FMR).
 
 Fair Market Rent is determined by a combination of a census survey of rents paid by recent movers, rent inflation adjustment, and forecasted expected growth in the rental housing market. FMR includes contract rent and utilities, ensuring that a full cost of base living necessities are captured in the metric. FMR calculations are made using American Community Survey from two years prior to the calculation and are primarily used to set public housing flat rates and Section 8 housing choice voucher payment standards. [Housing choice voucher recipients](https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf) and [public housing tenants](https://www.huduser.gov/periodicals/ushmc/spring95/spring95.html) make up approximately 3 million, or 2.5%, of United States households. Because of the diversity of contexts in which it is utilized, HUD FMR calculations can serve as a lens into the effectiveness of housing markets across the country in addressing issues of housing provision. This project aims to describe public data sources that can be used in analyzing housing affordability and some simple [indicators](https://urbanspatial.github.io/PublicPolicyAnalytics/TOD.html) that can be applied at various scales using Chicago as a case study.
 
-# Research Questions
+## Research Questions
 
-- Is the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in an area?
-- What have metrics for housing subsidies looked like over time?
-- If there is a difference between actual rents and Fair Market Rents as determined by HUD, what data can we use to explain those differences?
+- What public data exists that can be used to develop indicators for housing affordability?
 
-# Data Plan
+- Are the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in Chicago?
+
+- How have Fair Market Rent calculations and Zillow Observed Rent Index values changed over the period of 2014 to 2019?
+
+- Do socio-economic characteristics such as rent burden, gini index values, and educational attainment have an association with housing affordability?
+
+## Data
 
 To perform this analysis, we needed data from three sources: 
 
-* Fair Market Rent (FMR) data from the United States Department of Housing and Urban Development (HUD)
+- Fair Market Rent (FMR) data from the United States Department of Housing and Urban Development (HUD)
 
-* Observed rent data provided by Zillow
+- Observed rent data provided by Zillow
 
-* Socio-economic data provided by the United States Census in their American Community Survey data product
+- Socio-economic data provided by the United States Census in their American Community Survey data product
 
-All of these data needed to be available at the same geographic level, and thankfully that provided no challenge as all of these data products are aggregated to the ZIP code level and the Metropolitan Statistical Area level. For this project we focused our efforts on ZIP codes within the City of Chicago. HUD FMR data is available through the [HUD Policy Development & Research Website](https://www.huduser.gov/portal/datasets/fmr.html)
+- Geographic data describing the boundaries of ZIP codes within our study area provided by the Census Bureau 
 
-# Analysis Plan
+All of these data needed to be available at the same geographic level, and thankfully that provided no challenge as all of these data products are aggregated to the ZIP code level and the Metropolitan Statistical Area level. For this project we focused our efforts on ZIP codes within the City of Chicago. HUD FMR data is available through the [HUD Policy Development & Research Website](https://www.huduser.gov/portal/datasets/fmr.html), Zillow data is available through their [website's research data page](https://www.zillow.com/research/data/), and socio-economic data was available through the Census data API which we accessed using Kyle Walker's [TidyCensus](https://walker-data.com/tidycensus/) package. 
 
-Zillow's ZORI data provides average rents across all units, **regardless of the number of bedrooms**. We need some method to compare ZORI values with the values provided by HUD. This could take the form of finding the best fitting bedroom size or collapsing the HUD bedroom values into one average value. We can try both and see what works best.
+# Methods
+
+The following section describes methods used to wrangle and analyze the public data described above. All of the following methods were performed using R and various open source packages developed by the R community. 
+
+## Data Wrangling
+
+Zillow's ZORI data provides average observed rents without regard for the number of bedrooms within. HUD provides FMR calculations for each bedroom size. To compare these two datasets we averaged the FMR for each bedroom size (studio through 4 bedroom) together to create an average FMR for the ZIP code. This method was chosen for its relative simplicity, with proposed alternatives including a weighted average with weights tied to bedroom size or the selection of one bedroom size as the standard for comparison. 
+
+HUD FMR data was collected at the ZIP code level, with calculations being made for each year in the study period. Zillow data was provided for each month within the study period. To compare data across the same unit of time, we transformed the ZORI data and averaged the monthly values to approximate a year average for each ZIP code. 
+
+HUD data was clean and complete, meaning that no rows contained any missing values and represented 487 ZIP codes within the Chicago metropolitan region across the 7 year study period. Zillow data was far more limited, sharing only 92 ZIP codes with the HUD data and missing many values within those ZIP codes for certain time periods within our study period. The differences in these data sets limit the generalizability of the analysis, and is discussed more in the limitations section below.
+
 
 ```{r }
-
-### The final dataset should have no missing values for a ZIP code in any year. That means that the ZIP codes should have values for all years in the the hud and zori datasets.
-
 ### --------------
 ### hud data
 ###
 
 hud_data <- hud_data_raw %>%
-  # Create a variable to map to the ZORI values
+  # Create a variable to compare with ZORI values
   mutate(br_avg = (br_0 + br_1 + br_2 + br_3 + br_4) / 5) %>% 
   select(!c(br_0:br_4)) %>%
   # saw some duplicates on the year-zip level
@@ -110,6 +122,36 @@ data <- zori %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg)
 ```
 
+There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies.
+
+```{r }
+### -----------------------------
+### Spatial Data
+### 
+
+# Transforming to this CRS makes the map look "normal"
+crs <- 3435 # coordinate reference system: IL NAD83 East
+
+# Get Cook County geometry to put zctas in context
+cook_county <- counties(state = "IL", cb = T, progress_bar = F) %>%
+  filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
+  select(NAME, geometry) %>%
+  st_transform(crs)
+
+# Create filter for ZIP geom pull
+starts_with <- data %>% 
+  pull(RegionName) %>% # Vectorize the column
+  str_extract(pattern = "[0-9]{2}") %>%
+  unique() # c("53", "60") 
+
+### Get ZCTA geometry
+zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
+  select(GEOID10, geometry) %>%
+  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
+  st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
+                         # that make the map less easy to digest. This removes them
+```
+
 # Plots
 
 Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
@@ -141,36 +183,6 @@ data %>%
 ```
 
 # Exploring Change in Rent Valuations
-
-There may be a spatial component to these FMR valuations compared with observed rent. This chunk maps the data to the ZIP code geometry provided by `tigris`.
-
-```{r }
-### -----------------------------
-### Year-over-Year difference map
-### Prepare data
-
-# Transforming to this CRS makes the map look "normal"
-crs <- 3435 # coordinate reference system: IL NAD83 East
-
-# Get Cook County geometry to put zctas in context
-cook_county <- counties(state = "IL", cb = T, progress_bar = F) %>%
-  filter(NAME == "Cook") %>% # Chicago + suburbs are almost entirely within Cook County
-  select(NAME, geometry) %>%
-  st_transform(crs)
-
-# Create filter for ZIP geom pull
-starts_with <- data %>% 
-  pull(RegionName) %>% # Vectorize the column
-  str_extract(pattern = "[0-9]{2}") %>%
-  unique() # c("53", "60") 
-
-### Get ZCTA geometry
-zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
-  select(GEOID10, geometry) %>%
-  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
-  st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
-                         # that make the map less easy to digest. This removes them
-```
 
 The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
 
@@ -447,6 +459,8 @@ grid.arrange(
 ```
 
 # Limitations
+
+Differences between ZORI and FMR data, missing ZORI values for some months could effect the accuracy of 
 
 ## Missingness in data
 
