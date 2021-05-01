@@ -43,9 +43,11 @@ Fair Market Rent is determined by a combination of a census survey of rents paid
 
 - What public data exists that can be used to develop indicators for housing affordability?
 
+- What visualizations are effective in describing housing affordability, housing subsidies, and housing market dynamics?
+
 - Are the U.S. Department of Housing and Urban Development’s Fair Market Rent calculations representative of actual rents in Chicago?
 
-- How have Fair Market Rent calculations and Zillow Observed Rent Index values changed over the period of 2014 to 2019?
+- How have Fair Market Rent calculations and Zillow Observed Rent Index values changed over the period of 2014 to 2019 in Chicago?
 
 - Do socio-economic characteristics such as rent burden, gini index values, and educational attainment have an association with housing affordability?
 
@@ -69,12 +71,13 @@ The following section describes methods used to wrangle and analyze the public d
 
 ## Data Wrangling
 
+### Housing Market Data
+
 Zillow's ZORI data provides average observed rents without regard for the number of bedrooms within. HUD provides FMR calculations for each bedroom size. To compare these two datasets we averaged the FMR for each bedroom size (studio through 4 bedroom) together to create an average FMR for the ZIP code. This method was chosen for its relative simplicity, with proposed alternatives including a weighted average with weights tied to bedroom size or the selection of one bedroom size as the standard for comparison. 
 
 HUD FMR data was collected at the ZIP code level, with calculations being made for each year in the study period. Zillow data was provided for each month within the study period. To compare data across the same unit of time, we transformed the ZORI data and averaged the monthly values to approximate a year average for each ZIP code. 
 
 HUD data was clean and complete, meaning that no rows contained any missing values and represented 487 ZIP codes within the Chicago metropolitan region across the 7 year study period. Zillow data was far more limited, sharing only 92 ZIP codes with the HUD data and missing many values within those ZIP codes for certain time periods within our study period. The differences in these data sets limit the generalizability of the analysis, and is discussed more in the limitations section below.
-
 
 ```{r }
 ### --------------
@@ -120,7 +123,45 @@ rm(zori_staging)
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg)
+
+# TODO: KableExtra table with quick summary stats of data object
 ```
+
+### Census Socio-Economic Data
+
+To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings.
+
+```{r}
+# Defines acs5_pull function, lists the variables used, and calculates values with those variables
+source(here("ingest_census_data.R"))
+
+zips <- data %>%
+  pull(RegionName) %>%
+  unique()
+
+acs_2014 <- acs5_pull(2014, zips) %>%
+  # Including zips in the function call is supposed to prevent us needing
+  # to filter by zip, but it's not working.
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
+
+acs_2019 <- acs5_pull(2019, zips) %>%
+  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
+  filter(ZIP %in% zips)
+
+data_2014 <- data %>%
+  filter(year == 2014) %>%
+  left_join(acs_2014, by = c("RegionName" = "ZIP", "year")) %>%
+  
+
+data_2019 <- data %>%
+  filter(year == 2019) %>%
+  left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
+
+# TODO: KableExtra table with basic summary statistics for data_2019
+```
+
+### Spatial Data
 
 There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies.
 
@@ -147,14 +188,14 @@ starts_with <- data %>%
 ### Get ZCTA geometry
 zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   select(GEOID10, geometry) %>%
-  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
+  st_transform(crs) %>%  # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
                          # that make the map less easy to digest. This removes them
 ```
 
-# Plots
+## Analysis
 
-Once we have both our data fully cleaned we'll want to do some basic visualizations of the data. I see this taking the form of a distribution plot across ZIP codes by year, a series of maps by year, and trend lines of ZORI values and FMR values.
+
 
 ```{r }
 ### -----------
@@ -243,42 +284,14 @@ animate(dist_anim, fps = 1, nframes = 6)
 
 We'll want to take the above analysis and tie it back to the policy implications. We know HUD FMR data is used to guide housing subsidies. What does that mean in terms of the rental housing market, tenant precarity, and larger trends of income and housing inequality? If we have time I think it would be good to bring in some census data at the ZCTA level and looking to see if there is any association between demographics and housing affordability using this data.
 
-```{r}
-# This entire section could be cleaned up, but it works.
-
-source(here("ingest_census_data.R"))
-
-zips <- data %>%
-  pull(RegionName) %>%
-  unique()
-
-acs_2014 <- acs5_pull(2014, zips) %>%
-  # Including zips in the function call is supposed to prevent us needing
-  # to filter by zip, but it's not working.
-  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
-  filter(ZIP %in% zips)
-
-acs_2019 <- acs5_pull(2019, zips) %>%
-  mutate(ZIP = str_extract(NAME, "[0-9]{5}?")) %>%
-  filter(ZIP %in% zips)
-
-# TODO: This can be put into one dataset so that we can
-# analyze change over time
-data_2014 <- data %>%
-  filter(year == 2014) %>%
-  left_join(acs_2014, by = c("RegionName" = "ZIP", "year"))
-
-data_2019 <- data %>%
-  filter(year == 2019) %>%
-  left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
-```
 
 ## Plotting Associations
 
 ```{r}
-### -------------
+### -------------------
 ### coor plot
-### ZORI and hh_income
+### diff and hh_income
+# TODO: Do the same with gini_index, percent_snap_recipients, and percent_black_pop
 
 plot1 <- data_2014 %>%
   ggplot(aes(x = median_hh_income, y = zori_avg)) +
@@ -463,6 +476,11 @@ grid.arrange(
 Differences between ZORI and FMR data, missing ZORI values for some months could effect the accuracy of 
 
 ## Missingness in data
+
+```{r}
+# TODO: Visualize missingness in zori data. This could use zori_raw or zori_staging I think. Whichver works best
+```
+
 
 # Conclusions
 
