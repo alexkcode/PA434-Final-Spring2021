@@ -387,28 +387,25 @@ acs_to_year_mapping <- list(
 
 # still figuring out the best aesthetic 
 cleveland_plot <- function(input_data, yr, acs) {
-  plot_data <- 
-    input_data %>% 
+  plot_data <-
+    input_data %>%
     left_join(acs[[as.character(yr)]], by = c("RegionName", "year")) %>%
     filter(year == yr) %>%
     mutate(income_diff = rent/(median_hh_income/12),
            burden = cut(income_diff,
                         breaks=c(0, 0.3, 0.5, 1),
-                        labels=c("low","medium","high")))
-  
-  print(plot_data)
+                        labels=c("Low","Medium","High")))
   
   ggplot(data = plot_data,
-         # mapping = aes(x = reorder(RegionName, rent), y = rent)) +
          mapping = aes(x = RegionName, y = rent)) +
-    geom_line(aes(group = RegionName, color = burden), size = 1) +
-    # geom_point(aes(y = median_hh_income/12), size = 5, color = "blue") +
-    # geom_point(aes(y = income_diff), size = 5, color = "blue") +
+    # line showing the difference between the HUD and Zillow indices
+    geom_line(aes(group = RegionName, color = burden), size = 5) +
+    # shapes representing either HUD or Zillow index
     geom_point(aes(shape = source), size = 5) +
+    # labeling the difference by percentage between indices
     geom_text(
       data = plot_data %>% filter(source == "zori_avg"),
       mapping = aes(
-        # color = source,
                     label = paste0(
                       "+", scales::percent(x = diff,
                                            accuracy = 0.01)
@@ -416,6 +413,7 @@ cleveland_plot <- function(input_data, yr, acs) {
       size = 3.5,
       hjust = -0.25
     ) +
+    # labeling the lines with the neighborhood
     geom_text(
       data = plot_data %>% filter(source == "hud_avg"),
       mapping = aes(label = neighborhood),
@@ -425,7 +423,6 @@ cleveland_plot <- function(input_data, yr, acs) {
     ) +
     scale_y_continuous(labels = scales::dollar_format(),
                        limits = c(800, 3200)) +
-    # ) +
     coord_flip() +
     labs(
       title = "Zip Codes With Rent Furthest From Fair Market Rate",
@@ -434,14 +431,15 @@ cleveland_plot <- function(input_data, yr, acs) {
       y = "Rent Index",
       shape = "Source",
       color = "Rent Burden"
-    ) 
-  # + scale_colour_discrete(labels = c("HUD", "Zillow"))
+    ) +
+    scale_color_manual(values = c("#00ba38","#83b0fc","#F8766D")) +
+    scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
 }
 
 library(gridExtra)
 
 grid.arrange(
-  cleveland_plot(cleveland_data, 2014, acs_to_year_mapping), 
+  cleveland_plot(cleveland_data, 2014, acs_to_year_mapping),
   cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 )
 
