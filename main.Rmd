@@ -196,17 +196,13 @@ zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
 
 ### Macro-Level Trends
 
-The following plot shows the aggregate trend lines of observed rents and FMR values. FMR values typically lag behind observed rents. This is due to the fact that HUD FMR values are calculated using rent estimates from ACS 5 year estimates from two years prior to the year of valuation. 
+The following plot shows the aggregate trend lines of observed rents and FMR values. Observed rents increased over time, which is to be expected due to growth. FMR values typically lag behind observed rents, which is why the two trend lines are parallel. This is due to the fact that HUD FMR values are calculated using rent estimates from ACS 5 year gross rent estimates from two years prior to the year of valuation, omitting new construction from the observed rental housing stock. The shortening of the gap between the two values in 2018 was due to a [change in methodology](https://www.huduser.gov/portal/datasets/fmr/fmr2018/FY2018-FMR-Preamble.pdf) by HUD. In 2018, the FMR calculation stopped using 50th percentile FMR values and began using 40th percentile FMR values. While describing the impacts and outcomes of this change is not within the scope of this project, it is worth noting that this likely increased the mobility of households receiving federal housing subsidies. 
 
 ```{r }
 ### -----------
 ### Trend plot
 ###
-# Shows the parallel aggregate trend lines between observed rents and HUD's FMR values 
-# average across ZIP codes observed in data. We need to explain what this is,
-# and why it's the case. It's because FMR is derived from actual rents, and
-# the process for determining FMR excludes the newest housing stock (buildings
-# constructed in the past 2 years). 
+
 data %>%
   group_by(year) %>%
   summarize(ZORI = mean(zori_avg, na.rm = T),
@@ -225,9 +221,11 @@ data %>%
   scale_y_continuous(labels = scales::label_dollar())
 ```
 
-### Exploring Change in Rent Valuations
+These general trends in Chicago's rental housing market demonstrate that, on average, rent is increasing in the city. Housing subsidies follow similar trends, but never match those of observed rents. This indicates that households with the most need, those that receive rental subsidies, are chronically unable to afford high-quality housing in Chicago.
 
-The following map shows that the difference between ZORI and HUD FMR values has been shrinking, and in some places reversing. 
+### Pulling Out the Magnifying Glass
+
+The general trends described above provide insight into Chicago as a whole, opening up questions about whether these trends are experienced equally across Chicago ZIP codes. The following animation looks at the difference between observed rent and FMR values over time for ZIP codes where data was available. Please note that because of the way the difference was calculated it is not immediately apparent whether changes are due to a shift in HUD data, Zillow data, or both. 
 
 ```{r }
 ### -----------------------------
