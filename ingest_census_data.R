@@ -39,7 +39,9 @@ acs5_vars <- c(
   household_rentburden_35_39 = "B25070_008", 
   household_rentburden_40_49 = "B25070_009",
   household_rentburden_grtoeq_50 = "B25070_010",
-  rent_occ_total = "B25068_001"
+  rent_occ_total = "B25068_001",
+  population_total = "B02001_001",
+  population_black = "B02001_003"
 )
 
 # Pulling data for Zip Code tabulation areas
@@ -70,6 +72,7 @@ acs5_pull <- function(year, zctas) {
                                 household_rentburden_40_49 + household_rentburden_grtoeq_50) / total_households_c,
       median_hh_income = median_hh_income,
       percent_snap_recipients = snap_households_b / total_households_b,
+      percent_black_pop = population_black / population_total,
       .keep = "none"
     )
   
