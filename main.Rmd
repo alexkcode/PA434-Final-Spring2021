@@ -216,12 +216,13 @@ data %>%
                values_to = "rent") %>%
   ggplot(aes(x = year, y = rent, color = index)) +
   geom_line(size = 2, lineend = "round") +
-  labs(title = "Average Rents",
+  labs(title = "Average Values, Fair Market Rent and Observed Rents, 2014 - 2020",
        subtitle = "HUD Fair Market Rent Average and Zillow Observed Rent Index Average",
        x = "Year",
-       y = "Rent",
-       color = "Source") +
-  theme_minimal()
+       y = "Rent (in USD)",
+       color = "Values") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::label_dollar())
 ```
 
 ### Exploring Change in Rent Valuations
@@ -260,11 +261,6 @@ The following distribution plots help us understand that this is an effect of HU
 ### ZIP/Rent distribution plot
 ###
 
-# NOTE: These values aren't inflation adjusted, which would be important for a more in-depth analysis. 
-# However, since $1000 in 2014 is equivalent to $1118.87 today we can ignore it without
-# running into any major methodological issues.
-
-# NOTE: This could be animated too
 dist_anim <- data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg, na.rm = T),
@@ -443,31 +439,35 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 # TODO: Do the same with gini_index, percent_snap_recipients, and percent_black_pop
 
 plot1 <- data_2014 %>%
-  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = median_hh_income, y = diff)) +
   geom_jitter() +
   geom_smooth(method = "lm") +
-  labs(title = "Observed Rents and Household Income, 2014",
-      subtitle = "for select ZIP Codes",
+  labs(title = "Observed Minus Fair Market Rent Compared with Household Income, 2014",
       x = "Median Household Income",
-      y = "Zillow Observed Rent Index Value")
+      y = "ZORI - FMR Values (in USD)") +
+  scale_x_continuous(limits = c(0, 190000))
 
 plot2 <- data_2019 %>%
-  ggplot(aes(x = median_hh_income, y = zori_avg)) +
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = median_hh_income, y = diff)) +
   geom_jitter() +
   geom_smooth(method = "lm") +
-  labs(title = "Observed Rents and Household Income, 2019",
-      subtitle = "for select ZIP Codes",
+  labs(title = "Observed Minus Fair Market Rent Compared with Household Income, 2019",
       x = "Median Household Income",
-      y = "Zillow Observed Rent Index Value")
+      y = "ZORI - FMR Values (in USD)") +
+  scale_x_continuous(limits = c(0, 190000))
 
-plot1 + plot2
+plot1 / plot2
 ```
 
 # Conclusions
 
 ## Limitations
 
-Differences between ZORI and FMR data, missing ZORI values for some months could effect the accuracy of 
+Differences between ZORI and FMR data, missing ZORI values for some months could effect the generalizability of rents for some years.
+
+Dollar values aren't inflation adjusted, which would be important for a more in-depth analysis. However, since \$1000 in 2014 is equivalent to \$1118.87 today we can ignore it without running into any major methodological issues.
 
 ### Missingness in data
 
