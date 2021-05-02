@@ -333,10 +333,9 @@ data %>%
   mutate(neighborhood = as.character(neighborhoods[RegionName]))
 ```
 
-The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD definition as a gross rent greater than 30% of income. Any rent above 50% of income is considered to be a severely rent burdened.
+The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD definition as a gross rent greater than 30% of income. Any rent above 50% of income is considered to be a severely rent burdened. The lines between the plots are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened. 
 
 ```{r fig.width=10, fig.height=11}
-
 ### ------------------
 ### Cleveland Dot Plot 
 ### include ACS data
@@ -366,7 +365,7 @@ cleveland_plot <- function(input_data, yr, acs) {
     mutate(# map to HUD definition of housing affordability
            burden = cut(percent_unaffordable,
                         breaks=c(0, 0.5, 1),
-                        labels=c("Low","High")))
+                        labels=c("Minority","Majority")))
   
   ggplot(data = plot_data,
          mapping = aes(x = RegionName, y = rent)) +
@@ -402,7 +401,7 @@ cleveland_plot <- function(input_data, yr, acs) {
       shape = "Source",
       color = "Proportion"
     ) +
-    scale_color_manual(values = c("Low"="#00ba38","High"="#F8766D")) +
+    scale_color_manual(values = c("Minority"="#00ba38","Majority"="#F8766D")) +
     scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
 }
 
@@ -411,7 +410,7 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 
 ### Socio-Economic Characteristic Context
 
-In comparing 2014 to 2019 we see that the neighborhoods typically known for gentrification show up in some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
+In comparing 2014 to 2019 we see that the neighborhoods typically known for gentrification show up in some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
 
 ```{r}
 ### -------------------
