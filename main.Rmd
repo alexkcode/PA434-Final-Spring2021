@@ -165,7 +165,7 @@ data_2019 <- data %>%
 
 ### Spatial Data
 
-There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies.
+There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies. The following map shows the location and area of ZIP codes included in the research data.
 
 ```{r }
 ### -----------------------------
@@ -193,6 +193,8 @@ zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
                          # and make the map harder to digest. st_filter removes them
+
+# Instead of a summary table include a map showing where the geographies used are located
 data %>%
   left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
   ggplot(aes(geometry = geometry)) +
@@ -249,9 +251,6 @@ The following animation looks at the difference between observed rent and FMR va
 ### Animated
 
 map_anim <- data %>%
-  # NOTE: Because of the way this is calculated we don't 
-  # have any indication if the change is due to a change in 
-  # ZORI or HUD values
   mutate(diff = zori_avg - hud_avg) %>% 
   left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
   ggplot(aes(geometry = geometry)) +
@@ -294,72 +293,11 @@ The above animation shows that not every SAFMR value is equally responsive to ma
 
 ### Largest Differences in FMR Calculations and Observed Rents
 
-Areas with the largest differences between observed rent and calculated FMR were
+The following section performs a brief case study of the areas with the largest differences at the beginning of our study period, 2014. One notable theme in this set was gentrification. Five of the ten ZIP codes in this case study - Logan Square, Pilsen, Cabrini Green, Chinatown, and East Garfield Park -  encompassed areas that were known to be gentrifying or at risk of gentrification in [this](https://voorheescenter.red.uic.edu/wp-content/uploads/sites/122/2017/10/Voorhees-Center-Gentrification-Index-Oct-14.pdf) study performed by the Nathalie P. Voorhees Center at UIC. Expanding on this case study could help provide more explanatory or descriptive factors in gentrification research.
 
-```{r }
-### ------------------
-### Cleveland Dot Plot
-### Animated
+The following two plots show 
 
-neighborhoods <-
-  list(
-    "60045" = "Lake County",
-    "60602" = "Downtown",
-    "60610" = "Near Northside, Cabrini Green",
-    "60126" = "Elmhurst",
-    "60642" = "River West",
-    "60647" = "Logan Square",
-    "60616" = "Chinatown, Armour Square",
-    "60525" = "La Grange",
-    "60612" = "East Garfield Park",
-    "60608" = "Pilsen"
-  )
-
-cleveland_data <-
-  data %>%
-  # can't do functions in label assignments so gotta do it here
-  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
-  ungroup() %>%
-  filter(RegionName %in% names(neighborhoods)) %>%
-  pivot_longer(cols = c(zori_avg:hud_avg),
-               names_to = "source",
-               values_to = "rent") %>%
-  mutate(neighborhood = neighborhoods[RegionName])
-
-cleveland_plot <- ggplot(data = cleveland_data,
-                         mapping = aes(x = reorder(RegionName, rent), 
-                                       y = rent)) +
-  geom_line(aes(group = RegionName), size = 1) +
-  geom_point(aes(color = source), size = 5) +
-  geom_text(data = cleveland_data %>% filter(source == "zori_avg"),
-            mapping = aes(color = source,
-                          label = paste0("+",scales::percent(x = diff, 
-                                                             accuracy = 0.01))),
-            size = 3.5,
-            hjust = -0.25) +
-  geom_text(data = cleveland_data %>% filter(source == "hud_avg"),
-            mapping = aes(label = neighborhood),
-            size = 3.5,
-            hjust = 0,
-            nudge_x = 0.5) +
-  scale_y_continuous(labels = scales::dollar_format(), limits = c(500, 3500)) +
-  coord_flip() +
-  labs(title = "Zip Codes With Rent Furthest From Fair Market Rate",
-       subtitle = "HUD versus Zillow with Median Income in {current_frame}",
-       x = "ZIP",
-       y = "Rent Index",
-       color = "Value") +
-  scale_colour_discrete(labels = c("HUD FMR", "Zillow Observed Rents")) +
-  transition_manual(year)
-
-animate(cleveland_plot, fps = 1, nframes = 6)
-
-rm(cleveland_data)
-```
-
-### Socio-Economic Characteristic Context
-
-```{r fig.width=10, fig.height=11, include = FALSE}
+```{r}
 ### ------------------
 ### Cleveland Dot Plot 
 ### include ACS data
@@ -401,7 +339,7 @@ cleveland_plot <- function(input_data, yr, acs) {
     left_join(acs[[as.character(yr)]], by = c("RegionName", "year")) %>%
     filter(year == yr) %>%
     mutate(income_diff = rent/(median_hh_income/12),
-           # based on HUD definition of housing affordability
+           # map to HUD definition of housing affordability
            burden = cut(income_diff,
                         breaks=c(0, 0.3, 0.5, 1),
                         labels=c("Low","Medium","High")))
@@ -448,6 +386,8 @@ cleveland_plot <- function(input_data, yr, acs) {
 
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
+
+### Socio-Economic Characteristic Context
 
 ```{r}
 ### -------------------
@@ -498,7 +438,7 @@ vis_miss(zori_raw %>% select(c("2014-01":"2021-02"))) +
 ```
 We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data seems to be Missing at Random, or MAR, since there doesn't seem to be any specific mechanism linking the missingness of rental data to those particular periods.
 
-After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it is not enough cause concern:
+After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it was not enough to cause concern:
 ```{r fig.width=10, fig.height=5}
 vis_miss(data %>% select(zori_avg, hud_avg)) +
   ggplot(data %>% 
