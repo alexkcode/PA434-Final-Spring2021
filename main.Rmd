@@ -253,10 +253,9 @@ map_anim <- data %>%
 animate(map_anim, fps = 1, nframes = 6)
 ```
 
-
 The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
-```{r }
+```{r}
 ### --------------
 ### ZIP/Rent distribution plot
 ###
@@ -276,73 +275,25 @@ dist_anim <- data %>%
 
 animate(dist_anim, fps = 1, nframes = 6)
 ```
-
-### Largest Differences in FMR Calculations and Observed Rents
-
-```{r }
-### ------------------
-### Cleveland Dot Plot
-### Animated
-
-neighborhoods <-
-  list(
-    "60045" = "Lake County",
-    "60602" = "Downtown",
-    "60610" = "Near Northside, Cabrini Green",
-    "60126" = "Elmhurst",
-    "60642" = "River West",
-    "60647" = "Logan Square",
-    "60616" = "Chinatown, Armour Square",
-    "60525" = "La Grange",
-    "60612" = "East Garfield Park",
-    "60608" = "Pilsen"
-  )
-
-cleveland_data <-
-  data %>%
-  # can't do functions in label assignments so gotta do it here
-  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
-  ungroup() %>%
-  filter(RegionName %in% names(neighborhoods)) %>%
-  pivot_longer(cols = c(zori_avg:hud_avg),
-               names_to = "source",
-               values_to = "rent") %>%
-  mutate(neighborhood = neighborhoods[RegionName])
-
-cleveland_plot <- ggplot(data = cleveland_data,
-                         mapping = aes(x = reorder(RegionName, rent), 
-                                       y = rent)) +
-  geom_line(aes(group = RegionName), size = 1) +
-  geom_point(aes(color = source), size = 5) +
-  geom_text(data = cleveland_data %>% filter(source == "zori_avg"),
-            mapping = aes(color = source,
-                          label = paste0("+",scales::percent(x = diff, 
-                                                             accuracy = 0.01))),
-            size = 3.5,
-            hjust = -0.25) +
-  geom_text(data = cleveland_data %>% filter(source == "hud_avg"),
-            mapping = aes(label = neighborhood),
-            size = 3.5,
-            hjust = 0,
-            nudge_x = 0.5) +
-  scale_y_continuous(labels = scales::dollar_format(), limits = c(500, 3500)) +
-  coord_flip() +
-  labs(title = "Zip Codes With Rent Furthest From Fair Market Rate",
-       subtitle = "HUD versus Zillow with Median Income in {current_frame}",
-       x = "ZIP",
-       y = "Rent Index",
-       color = "Source") +
-  scale_colour_discrete(labels = c("HUD", "Zillow")) +
-  transition_manual(year)
-
-animate(cleveland_plot, fps = 1, nframes = 6)
-
-rm(cleveland_data)
-```
+We see that the HUD FMR is starting to match the market rate closer and closer but we see the centers of both distributions are slowing rightward and simultaneously the distribution shape is getting wider and flatter. What could explain this change in variation and simultaneous shifting in rent over time? 
 
 ### Socio-Economic Characteristic Context
 
-```{r fig.width=10, fig.height=11, include = FALSE}
+To add some context to this issue we will combine our rent index data with income data and look at the trend in income changes over time as compared to rent. To further isolate effects from income, we disaggregate by zip code to account for potential time constant effects associated with the zip code. The top 10 zip codes are selected by the difference in HUD versus Zillow market rates in 2014 and then compared with what they look like in 2019. Unfortunately we could use all the years present in our initial data set because the ACS data set from which we pull income data only has data for every 5 years.
+
+```{r}
+# TODO: make this into kable
+data %>%
+  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
+  ungroup() %>%
+  filter(year == 2014) %>%
+  arrange(desc(diff)) %>%
+  slice(head(row_number(), 10)) %>%
+  select(RegionName)
+```
+
+Here the income in relation to the market rent rates is represented by rent burden. Rent burden is based on HUD definition of housing affordability which is 30% of income. Any rent above 50% of income is conidered to be a high level of burden.
+```{r fig.width=10, fig.height=11}
 ### ------------------
 ### Cleveland Dot Plot 
 ### include ACS data
@@ -432,6 +383,8 @@ cleveland_plot <- function(input_data, yr, acs) {
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
 
+In comparing 2014 to 2019 we see that the neighborhoods typically known for gentrification show up in some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
+
 ```{r}
 ### -------------------
 ### coor plot
@@ -487,7 +440,9 @@ vis_miss(data %>% select(zori_avg, hud_avg)) +
   ggplot(data %>% 
            group_by(year) %>%
            summarise(n_missing = sum(is.na(hud_avg)))) +
-  geom_bar(aes(x = year, y = n_missing), stat="identity")
+  geom_bar(aes(x = year, y = n_missing), stat="identity") + 
+  # TODO: show every year on x axis
+  scale_y_continuous(limits = c(0,5))
 ```
 
 
