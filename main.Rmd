@@ -18,6 +18,8 @@ library(sf) # Used to manipulate the spatial data for maps
 library(tidycensus) # Used to pull census data 
 library(tidyverse)
 library(tigris) # Used to pull spatial features
+library(visdat) # For plotting missing data
+library(UpSetR) # For plotting missing data
 
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
@@ -114,7 +116,7 @@ zori <- zori_staging %>%
   summarize(rent_avg = mean(rent, na.rm = TRUE)) %>%
   ungroup()
 
-rm(zori_staging)
+# rm(zori_staging)
 
 ### -----------
 ### combined
@@ -353,7 +355,7 @@ neighborhoods <-
     "60126" = "Elmhurst",
     "60642" = "River West",
     "60647" = "Logan Square",
-    "60616" = "Chinatown, Armour Square",
+    "60616" = "Chinatown, Armour Square, Bridgeport",
     "60525" = "La Grange",
     "60612" = "East Garfield Park",
     "60608" = "Pilsen"
@@ -382,6 +384,7 @@ cleveland_plot <- function(input_data, yr, acs) {
     left_join(acs[[as.character(yr)]], by = c("RegionName", "year")) %>%
     filter(year == yr) %>%
     mutate(income_diff = rent/(median_hh_income/12),
+           # based on HUD definition of housing affordability
            burden = cut(income_diff,
                         breaks=c(0, 0.3, 0.5, 1),
                         labels=c("Low","Medium","High")))
@@ -426,7 +429,6 @@ cleveland_plot <- function(input_data, yr, acs) {
     scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
 }
 
-
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
 
@@ -469,9 +471,16 @@ Dollar values aren't inflation adjusted, which would be important for a more in-
 
 ### Missingness in data
 
-```{r}
-# TODO: Visualize missingness in zori data. This could use zori_raw or zori_staging I think. Whichver works best
+```{r fig.width=12, fig.height=6}
+# TODO: Visualize missingness in zori data. This could use zori_raw or zori_staging I think. Whichver works best. Have to figure out to label the year lines.
+
+vis_miss(zori_raw %>% select(c("2014-01":"2021-02"))) + 
+  geom_vline(xintercept = seq(from = 0, to = 94, by = 12), size = 1) +
+  # geom_text(aes(x=seq(from = 0, to = 94, by = 12), label="test", y=0), colour="#00ba38", angle=0, text=element_text(size=11)) +
+  theme(axis.text.x = element_text(angle = 90))
 ```
+We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years.
+
 
 ## Findings
 
