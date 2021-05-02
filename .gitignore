@@ -4,5 +4,5 @@
 .Ruserdata
 *.pdf
 *.html
-.Rproj
+*.Rproj
 *.doc

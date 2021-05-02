@@ -5,6 +5,8 @@ date: "4/17/2021"
 output:
   html_document: 
     code_folding: hide
+    toc: true
+    toc_float: true    
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
@@ -18,15 +20,15 @@ library(sf) # Used to manipulate the spatial data for maps
 library(tidycensus) # Used to pull census data 
 library(tidyverse)
 library(tigris) # Used to pull spatial features
-library(visdat) # For plotting missing data
 library(UpSetR) # For plotting missing data
+library(visdat) # For plotting missing data
 
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
 # Source: https://www.huduser.gov/portal/datasets/fmr.html
 # Methodology: https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf
 # NOTE: some years have more ZIP codes than others in this data
-source(here("ingest_hud_data.R"))
+source(here("ingest_hud_data.R")) # creates hud_data_raw object in env
 
 # Zillow Observed Rent Index (ZORI) data
 # Source: https://www.zillow.com/research/data/
@@ -106,20 +108,15 @@ zori_staging <- zori_raw %>%
                names_transform = list(year = as.double)) %>%
   select("RegionName","year","month","rent") 
 
-# quite a bit of missing data, ignoring issue for now
-# zori_staging %>%
-#   group_by(RegionName, year) %>%
-#   summarize(rent_missing_prop = sum(is.na(rent))/12)
-
 zori <- zori_staging %>%
   group_by(RegionName, year) %>%
   summarize(rent_avg = mean(rent, na.rm = TRUE)) %>%
   ungroup()
 
-# rm(zori_staging)
+rm(zori_staging)
 
 ### -----------
-### combined
+### market data
 ###
 
 data <- zori %>%
@@ -129,11 +126,15 @@ data <- zori %>%
 # TODO: KableExtra table with quick summary stats of data object
 ```
 
-### Census Socio-Economic Data
+### Socio-Economic Data
 
 To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings.
 
 ```{r}
+### -----------------------
+### Census data
+###
+
 # Defines acs5_pull function, lists the variables used, and calculates values with those variables
 source(here("ingest_census_data.R"))
 
@@ -189,9 +190,18 @@ starts_with <- data %>%
 ### Get ZCTA geometry
 zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   select(GEOID10, geometry) %>%
-  st_transform(crs) %>%  # Without this transformation to ILNAD83 the map looks weird
+  st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
-                         # that make the map less easy to digest. This removes them
+                         # and make the map harder to digest. st_filter removes them
+data %>%
+  left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
+  ggplot(aes(geometry = geometry)) +
+  geom_sf(data = cook_county) + # County boundary
+  geom_sf(aes(fill = RegionName)) + # ZCTA boundaries
+  labs(title = "Map of ZIP Codes in Research Data",
+       subtitle = "colors included for legibility purposes only") +
+  theme_minimal() +
+  guides(fill = FALSE) # remove legend
 ```
 
 ## Analysis
@@ -227,12 +237,16 @@ These general trends in Chicago's rental housing market demonstrate that, on ave
 
 ### Pulling Out the Magnifying Glass
 
-The general trends described above provide insight into Chicago as a whole, opening up questions about whether these trends are experienced equally across Chicago ZIP codes. The following animation looks at the difference between observed rent and FMR values over time for ZIP codes where data was available. Please note that because of the way the difference was calculated it is not immediately apparent whether changes are due to a shift in HUD data, Zillow data, or both. 
+The general trends described above provide insight into Chicago as a whole, opening up questions about whether these trends are experienced equally across Chicago ZIP codes. 
+
+An [article](https://www.nhlp.org/wp-content/uploads/2018/05/AH-27-1_11Thrope.pdf) written by Deborah Thrope in the *Journal of Affordable Housing* titled *Achieving Housing Choice and Mobility in the Voucher Program* outlined the inadequacies of the Housing Choice Voucher program in enabling tenant mobility and a collection of policy prescriptions to improve outcomes. Among them was a recommendation that HUD use Small Area FMR (SAFMR) values to better account for local market conditions. 
+
+The following animation looks at the difference between observed rent and FMR values over time for ZIP codes (Note: SAFMR and ZIP Code are used interchangably in this report) where data was available. Please note that because of the way the difference was calculated it is not immediately apparent whether changes are due to a shift in HUD data, Zillow data, or both. 
 
 ```{r }
 ### -----------------------------
 ### Year-over-Year difference map
-### Animation
+### Animated
 
 map_anim <- data %>%
   # NOTE: Because of the way this is calculated we don't 
@@ -245,7 +259,7 @@ map_anim <- data %>%
   geom_sf(aes(fill = diff)) + # ZCTA map
   labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
        caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
-       fill = "ZORI - HUD") + 
+       fill = "ZORI - HUD Value") + 
   scale_fill_viridis_c() +
   theme_minimal() +
   transition_manual(year) # transition_time doesn't work well with sf for some reason
@@ -253,13 +267,12 @@ map_anim <- data %>%
 animate(map_anim, fps = 1, nframes = 6)
 ```
 
-
-The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
+The following distribution plots help us understand that the change in the difference between ZORI values and HUD FMR is an effect of FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could indicate that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
 ```{r }
-### --------------
+### --------------------------
 ### ZIP/Rent distribution plot
-###
+### Animated
 
 dist_anim <- data %>% 
   group_by(RegionName, year) %>%
@@ -277,7 +290,11 @@ dist_anim <- data %>%
 animate(dist_anim, fps = 1, nframes = 6)
 ```
 
+The above animation shows that not every SAFMR value is equally responsive to market conditions. ZIP Codes in some areas saw relatively little change in the difference between their observed rents and calculated FMR values, while others saw drastic changes over the same time period - shifting from a large positive value to a negative value. This may indicate inefficiencies in the data and methods used to calculate SAFMR, since an ideal model of FMR calculation would result in a relatively homogeneous set of difference values across all areas. Futher exploration of these differences could take the form of a case study of areas where the difference value was positive and saw little change across the study period compared with those where the difference value was close to negative and saw little change across the study period.
+
 ### Largest Differences in FMR Calculations and Observed Rents
+
+Areas with the largest differences between observed rent and calculated FMR were
 
 ```{r }
 ### ------------------
@@ -331,8 +348,8 @@ cleveland_plot <- ggplot(data = cleveland_data,
        subtitle = "HUD versus Zillow with Median Income in {current_frame}",
        x = "ZIP",
        y = "Rent Index",
-       color = "Source") +
-  scale_colour_discrete(labels = c("HUD", "Zillow")) +
+       color = "Value") +
+  scale_colour_discrete(labels = c("HUD FMR", "Zillow Observed Rents")) +
   transition_manual(year)
 
 animate(cleveland_plot, fps = 1, nframes = 6)
