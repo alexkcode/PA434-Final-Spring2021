@@ -303,9 +303,10 @@ The above animation shows that not every SAFMR value is equally responsive to ma
 
 The following section performs a brief case study of the areas with the largest differences at the beginning of our study period, 2014. One notable theme in this set was gentrification. Five of the ten ZIP codes in this case study contained areas that were known to be gentrifying or at risk of gentrification in [this](https://voorheescenter.red.uic.edu/wp-content/uploads/sites/122/2017/10/Voorhees-Center-Gentrification-Index-Oct-14.pdf) study performed by the Nathalie P. Voorhees Center at UIC - Logan Square, Pilsen, Cabrini Green, Chinatown, and East Garfield Park. Expanding on this case study could provide more explanatory or descriptive factors in gentrification research.
 
-To add some context to this issue we combined our market data with socio-economic data and examined the trend in income changes over time as compared to rent for the ZIP codes with the largest difference in ZORI and FMR values in 2014. Because the Census Bureau recommends not comparing overlapping 5-year survey estimates, and because ZIP code-level data is unavailable in 1-year survey data, this approach is unable to provide a granular time-series analysis of the relationships between socio-economic characteristics and the market data. Below is a table 
+To add some context to this issue we combined our market data with socio-economic data and examined the trend in income changes over time as compared to rent for the ZIP codes with the largest difference in ZORI and FMR values in 2014. Because the Census Bureau recommends not comparing overlapping 5-year survey estimates, and because ZIP code-level data is unavailable in 1-year survey data, this approach is unable to provide a granular time-series analysis of the relationships between socio-economic characteristics and the market data. The following table lists those ZIP codes and their associated town or neighborhood. Label values were defined using Google Maps and assigning names based on which names appeared within the ZIP code boundaries.
 
 ```{r}
+# Defines labels for ZIP codes
 neighborhoods <-
   list(
     "60045" = "Lake Forest, IL",
@@ -332,7 +333,7 @@ data %>%
   mutate(neighborhood = as.character(neighborhoods[RegionName]))
 ```
 
-Here the income in relation to the market rent rates is represented by rent burden. Rent burden is based on HUD definition of housing affordability which is 30% of income. Any rent above 50% of income is conidered to be a high level of burden.
+The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD definition as a gross rent greater than 30% of income. Any rent above 50% of income is considered to be a severely rent burdened.
 
 ```{r fig.width=10, fig.height=11}
 
@@ -364,7 +365,7 @@ cleveland_plot <- function(input_data, yr, acs) {
     filter(year == yr) %>%
     mutate(# map to HUD definition of housing affordability
            burden = cut(percent_unaffordable,
-                        breaks=c(0, 0.33, 1),
+                        breaks=c(0, 0.5, 1),
                         labels=c("Low","High")))
   
   ggplot(data = plot_data,
