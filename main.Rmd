@@ -10,6 +10,10 @@ output:
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
+# TODO: Ensure theme_minimal applied to all plots
+# TODO: Create theme to apply to all plots with defined colors (could just be viridis or whatever)
+# TODO: Tables in places where a TODO: Put kable is found
+# TODO: Update cleveland plot to reflect available socio-economic data
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(gganimate) # Used to create an animated plot
 # install.packages('gifski') necessary for animation to compile
@@ -243,7 +247,7 @@ The general trends described above provide insight into Chicago as a whole, open
 
 An [article](https://www.nhlp.org/wp-content/uploads/2018/05/AH-27-1_11Thrope.pdf) written by Deborah Thrope in the *Journal of Affordable Housing* titled *Achieving Housing Choice and Mobility in the Voucher Program* outlined the inadequacies of the Housing Choice Voucher program in enabling tenant mobility and a collection of policy prescriptions to improve outcomes. Among them was a recommendation that HUD use Small Area FMR (SAFMR) values to better account for local market conditions. 
 
-The following animation looks at the difference between observed rent and FMR values over time for ZIP codes (Note: SAFMR and ZIP Code are used interchangably in this report) where data was available. Please note that because of the way the difference was calculated it is not immediately apparent whether changes are due to a shift in HUD data, Zillow data, or both. 
+The following animation visualizes the difference between observed rent and FMR values over time for ZIP codes (Note: SAFMR and ZIP Code are used interchangeably in this report) where data was available. Please note that because of the way the difference was calculated it is not immediately apparent whether changes are due to a shift in HUD data, Zillow data, or both. 
 
 ```{r }
 ### -----------------------------
@@ -293,15 +297,30 @@ animate(dist_anim, fps = 1, nframes = 6)
 
 We see that the HUD FMR is starting to match the market rate closer and closer but we see the centers of both distributions are slowing rightward and simultaneously the distribution shape is getting wider and flatter. What could explain this change in variation and simultaneous shifting in rent over time? 
 
-The above animation shows that not every SAFMR value is equally responsive to market conditions. ZIP Codes in some areas saw relatively little change in the difference between their observed rents and calculated FMR values, while others saw drastic changes over the same time period - shifting from a large positive value to a negative value. This may indicate inefficiencies in the data and methods used to calculate SAFMR, since an ideal model of FMR calculation would result in a relatively homogeneous set of difference values across all areas. Futher exploration of these differences could take the form of a case study of areas where the difference value was positive and saw little change across the study period compared with those where the difference value was close to negative and saw little change across the study period.
+The above animation shows that not every SAFMR value is equally responsive to market conditions. ZIP Codes in some areas saw relatively little change in the difference between their observed rents and calculated FMR values, while others saw drastic changes over the same time period - shifting from a large positive value to a negative value. This may indicate inefficiencies in the data and methods used to calculate SAFMR since an ideal model of FMR calculation would result in a relatively homogeneous set of difference values across all areas. Further exploration of these differences could take the form of a case study of areas where the difference value was positive and saw little change across the study period compared with those where the difference value was close to negative and saw little change across the study period. The following section attempts to explore a methodological avenue for doing such a case study.
 
 ### Examining the Edges: Largest Differences in FMR Calculations and Observed Rents
 
-The following section performs a brief case study of the areas with the largest differences at the beginning of our study period, 2014. One notable theme in this set was gentrification. Five of the ten ZIP codes in this case study - Logan Square, Pilsen, Cabrini Green, Chinatown, and East Garfield Park - encompassed areas that were known to be gentrifying or at risk of gentrification in [this](https://voorheescenter.red.uic.edu/wp-content/uploads/sites/122/2017/10/Voorhees-Center-Gentrification-Index-Oct-14.pdf) study performed by the Nathalie P. Voorhees Center at UIC. Expanding on this case study could help provide more explanatory or descriptive factors in gentrification research.
+The following section performs a brief case study of the areas with the largest differences at the beginning of our study period, 2014. One notable theme in this set was gentrification. Five of the ten ZIP codes in this case study contained areas that were known to be gentrifying or at risk of gentrification in [this](https://voorheescenter.red.uic.edu/wp-content/uploads/sites/122/2017/10/Voorhees-Center-Gentrification-Index-Oct-14.pdf) study performed by the Nathalie P. Voorhees Center at UIC - Logan Square, Pilsen, Cabrini Green, Chinatown, and East Garfield Park. Expanding on this case study could provide more explanatory or descriptive factors in gentrification research.
 
-To add some context to this issue we combiend our market data with socio-economic data and examined the trend in income changes over time as compared to rent. To further isolate effects from income, we disaggregate by zip code to account for potential time constant effects associated with the zip code. The top 10 zip codes are selected by the difference in HUD versus Zillow market rates in 2014 and then compared with what they look like in 2019. Because the Census Bureau recommends not comparing overlapping 5-year survey estimates, and because ZIP code-level data is unavailable in 1-year survey data, this approach is unable to provide a granular time-series analysis of the relationships between socio-economic characteristics and the market data.
+To add some context to this issue we combined our market data with socio-economic data and examined the trend in income changes over time as compared to rent for the ZIP codes with the largest difference in ZORI and FMR values in 2014. Because the Census Bureau recommends not comparing overlapping 5-year survey estimates, and because ZIP code-level data is unavailable in 1-year survey data, this approach is unable to provide a granular time-series analysis of the relationships between socio-economic characteristics and the market data. Below is a table 
 
 ```{r}
+neighborhoods <-
+  list(
+    "60045" = "Lake Forest, IL",
+    "60602" = "Downtown",
+    "60610" = "Near Northside, Cabrini Green",
+    "60126" = "Elmhurst",
+    "60642" = "River West",
+    "60647" = "Logan Square",
+    "60616" = "Chinatown, Armour Square, Bridgeport",
+    "60525" = "La Grange",
+    "60612" = "East Garfield Park",
+    "60608" = "Pilsen",
+    "60538" = "Aurora, IL"
+  )
+
 # TODO: make this into kable
 data %>%
   mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
@@ -309,7 +328,8 @@ data %>%
   filter(year == 2014) %>%
   arrange(desc(diff)) %>%
   slice(head(row_number(), 10)) %>%
-  select(RegionName)
+  select(RegionName) %>%
+  mutate(neighborhood = as.character(neighborhoods[RegionName]))
 ```
 
 Here the income in relation to the market rent rates is represented by rent burden. Rent burden is based on HUD definition of housing affordability which is 30% of income. Any rent above 50% of income is conidered to be a high level of burden.
@@ -319,20 +339,6 @@ Here the income in relation to the market rent rates is represented by rent burd
 ### ------------------
 ### Cleveland Dot Plot 
 ### include ACS data
-
-neighborhoods <-
-  list(
-    "60045" = "Lake County",
-    "60602" = "Downtown",
-    "60610" = "Near Northside, Cabrini Green",
-    "60126" = "Elmhurst",
-    "60642" = "River West",
-    "60647" = "Logan Square",
-    "60616" = "Chinatown, Armour Square, Bridgeport",
-    "60525" = "La Grange",
-    "60612" = "East Garfield Park",
-    "60608" = "Pilsen"
-  )
 
 cleveland_data <-
   data %>%
