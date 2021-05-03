@@ -13,10 +13,16 @@ output:
 # TODO: Create theme to apply to all plots with defined colors (could just be viridis or whatever)
 # TODO: Tables in places where a TODO: Put kable is found
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+### -------------
+### packages
+###
+
 library(gganimate) # Used to create an animated plot
 # install.packages('gifski') necessary for animation to compile
 library(ggrepel) # Used to create cleveland dot plot
 library(here)
+library(kableExtra) # Used to create tables
 library(patchwork) # Used to arrange plots as one image
 library(sf) # Used to manipulate the spatial data for maps
 library(tidycensus) # Used to pull census data 
@@ -25,12 +31,50 @@ library(tigris) # Used to pull spatial features
 library(UpSetR) # For plotting missing data
 library(visdat) # For plotting missing data
 
+### ------------------------
+### helper functions
+###
+
+summary_table <- function(data,
+                          orient = "cols") { # cols or rows
+  
+  # This logic handles the orientation of the resulting table
+  # "cols" means variable names are in the header
+  # "rows" means variable names are their own columns
+  x = "Statistic"
+  y = ".value"
+  
+  if(orient == "cols") {
+    x = ".value"
+    y = "Statistic"
+  }
+  
+  data %>%
+    summarise(# calculates all other summary statistics
+      across(.cols = everything(),
+             .fns = list(Minimum = min, Mean = mean, `Standard Deviation` = sd, # Names the functions in the output
+                         Median = median, Max = max), # "Name" = function
+             .names = "{.col}_{.fn}", 
+             na.rm = T)) %>%  # Passes na.rm = T to all of the listed functions
+    pivot_longer(cols = everything(),
+                 names_to = c(x, y), # You can switch these two values around to transpose the table
+                 names_pattern = "(.*)_(.*)") %>%
+    mutate(across(where(is.numeric), round, digits = 2))
+  
+}
+
+# Defines acs5_pull function, lists the variables used, and calculates values with those variables
+source(here("census_tools.R"))
+
+### ----------------
+### research data
+
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
 # Source: https://www.huduser.gov/portal/datasets/fmr.html
 # Methodology: https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf
 # NOTE: some years have more ZIP codes than others in this data
-source(here("ingest_hud_data.R")) # creates hud_data_raw object in env
+source(here("hud_data.R")) # creates hud_data_raw object in env
 
 # Zillow Observed Rent Index (ZORI) data
 # Source: https://www.zillow.com/research/data/
@@ -89,7 +133,7 @@ Zillow's ZORI data provides average observed rents without regard for the number
 
 HUD FMR data was collected at the ZIP code level, with calculations being made for each year in the study period. Zillow data was provided for each month within the study period. To compare data across the same unit of time, we transformed the ZORI data and averaged the monthly values to approximate a year average for each ZIP code. 
 
-HUD data was clean and complete, meaning that no rows contained any missing values and represented 487 ZIP codes within the Chicago metropolitan region across the 7 year study period. Zillow data was far more limited, sharing only 92 ZIP codes with the HUD data and missing many values within those ZIP codes for certain time periods within our study period. The differences in these data sets limit the generalizability of the analysis, and is discussed more in the limitations section below.
+HUD data was clean and complete, meaning that no rows contained any missing values and represented 487 ZIP codes within the Chicago metropolitan region across the 7 year study period. Zillow data was relatively more limited, sharing only 92 ZIP codes with the HUD data and missing many values within those ZIP codes for certain time periods within our study period. Missingness is discussed further in the Conclusions section.
 
 ```{r }
 ### --------------
@@ -121,8 +165,6 @@ zori <- zori_staging %>%
   summarize(rent_avg = mean(rent, na.rm = TRUE)) %>%
   ungroup()
 
-rm(zori_staging)
-
 ### -----------
 ### market data
 ###
@@ -131,7 +173,26 @@ data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg)
 
-# TODO: KableExtra table with quick summary stats of data object
+# Output: table
+data %>% 
+  select("Zillow Observed Rent Index Value" = zori_avg,
+         "Fair Market Rent Value" = hud_avg) %>%
+  drop_na() %>%
+  summary_table() %>% 
+  # Display as currency
+  mutate(across(.cols = 2:3, 
+                .fns = ~ scales::dollar(.x))) %>%
+  # basic table arrangements, label aesthetics
+  kable(escape = F, # Tells cell_spec HTML to process instead of print
+        align = "lrr",
+        caption = "Housing Market Data Summary",
+        format.args = list(big.mark = ",")) %>%
+  # full-table aesthetics
+  kable_styling(font_size = 20,
+                html_font = "Lucida",
+                full_width = F) %>%
+  # header
+  row_spec(0, bold = T, background = "#e5e5e5")
 ```
 
 ### Socio-Economic Data
@@ -142,9 +203,6 @@ To place the housing market data into better context we combined it with socio-e
 ### -----------------------
 ### Census data
 ###
-
-# Defines acs5_pull function, lists the variables used, and calculates values with those variables
-source(here("ingest_census_data.R"))
 
 zips <- data %>%
   pull(RegionName) %>%
@@ -168,12 +226,34 @@ data_2019 <- data %>%
   filter(year == 2019) %>%
   left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
 
-# TODO: KableExtra table with basic summary statistics for data_2019
+data_2019 %>%
+  select("Gini Index" = gini_index,
+         "Rent Burdened Households" = percent_unaffordable,
+         "Median Household Income (USD)" = median_hh_income,
+         "Black Population" = percent_black_pop) %>%
+  drop_na() %>%
+  summary_table() %>%
+    # Display as currency
+  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)`),
+         across(.cols = c(3, 5),
+                .fns = scales::percent,
+                accuracy = 1)) %>%
+  # basic table arrangements, label aesthetics
+  kable(escape = F, # Tells cell_spec HTML to process instead of print
+        align = "lrrrr",
+        caption = "Census Data Summary",
+        format.args = list(big.mark = ",")) %>%
+  # full-table aesthetics
+  kable_styling(font_size = 20,
+                html_font = "Lucida",
+                full_width = F) %>%
+  # header
+  row_spec(0, bold = T, background = "#e5e5e5")
 ```
 
 ### Spatial Data
 
-There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies. The following map shows the location and area of ZIP codes included in the research data.
+There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that observes geographic differences. The following map shows the location and area of ZIP codes included in the research data.
 
 ```{r fig.width=7, fig.height=7}
 ### -----------------------------
@@ -310,7 +390,7 @@ To add some context to this issue we combined our market data with socio-economi
 neighborhoods <-
   list(
     "60045" = "Lake Forest, IL",
-    "60602" = "Downtown",
+    "60602" = "Downtown, Washington",
     "60610" = "Near Northside, Cabrini Green",
     "60126" = "Elmhurst, IL",
     "60642" = "River West",
@@ -319,15 +399,30 @@ neighborhoods <-
     "60525" = "La Grange, IL",
     "60612" = "East Garfield Park",
     "60608" = "Pilsen",
-    "60538" = "Aurora, IL"
+    "60538" = "Aurora, IL",
+    "60601" = "Downtown, Lake",
+    "60611" = "Streeterville",
+    "60654" = "River North"
   )
 
-# TODO: make this into kable
-data %>%
+ data %>%
+  mutate(diff = (zori_avg - hud_avg) / hud_avg) %>%
+  ungroup() %>%
   filter(year == 2014) %>%
-  slice(head(row_number(), 10)) %>%
-  select(RegionName) %>%
-  mutate(neighborhood = as.character(neighborhoods[RegionName]))
+  arrange(desc(diff)) %>%
+   slice(head(row_number(), 10)) %>%
+   select(RegionName) %>%
+   mutate(neighborhood = as.character(neighborhoods[RegionName])) %>%
+   # basic table arrangements, label aesthetics
+   kable(escape = F, # Tells cell_spec HTML to process instead of print
+         align = "lr",
+         caption = "ZIP Codes and Nearby Neighborhoods") %>%
+   # full-table aesthetics
+   kable_styling(font_size = 20,
+                 html_font = "Lucida",
+                 full_width = F) %>%
+   # header
+   row_spec(0, bold = T, background = "#e5e5e5")
 ```
 
 The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD as a tenant's gross rent being greater than 30% of their income. Any rent above 50% of tenant income is considered to be a severe rent burden. The lines between the plotted values are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened. 
@@ -339,7 +434,7 @@ The following plots visualize the change in the selected ZIP codes between 2014 
 
 cleveland_data <-
   data %>%
-  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
+  mutate(diff = (zori_avg - hud_avg) / hud_avg) %>%
   ungroup() %>%
   filter(RegionName %in% names(neighborhoods) & year %in% c(2014,2019)) %>%
   pivot_longer(cols = c(zori_avg:hud_avg),
@@ -397,7 +492,8 @@ cleveland_plot <- function(input_data, yr, acs) {
     ) +
     # Proper labels with aesthetics
     scale_color_manual(values = c("Minority"="#00ba38","Majority"="#F8766D")) +
-    scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
+    scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow")) +
+    custom_theme
 }
 
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
@@ -407,11 +503,10 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 
 In comparing 2014 to 2019 we found that the neighborhoods typically known for gentrification have some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
 
-```{r  fig.width=8, fig.height=8}
+```{r fig.width=10, fig.height=8}
 ### -------------------
-### coor plot
-### diff and hh_income
-# TODO: Do the same with gini_index and percent_black_pop
+### coor plots
+### hh income
 
 plot1 <- data_2014 %>%
   mutate(diff = zori_avg - hud_avg) %>%
@@ -438,30 +533,67 @@ plot2 <- data_2019 %>%
 plot1 / plot2
 ```
 
-```{r}
+```{r fig.width=10, fig.height=8}
+### -------------------
+### coor plots
+### gini index
+
 plot3 <- data_2014 %>%
-  ggplot(aes(x = median_hh_income, y = gini_index)) +
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = gini_index, y = diff)) +
   geom_jitter() +
   geom_smooth(method = "lm") +
-  labs(title = "Gini Index Compared with Household Income, 2014",
-      x = "Median Household Income",
-      y = "Gini Index") +
-  scale_x_continuous(limits = c(0, 190000)) + 
+  labs(title = "Observed Minus Fair Market Rent Compared with Gini Index, 2014",
+      x = "Gini index",
+      y = "ZORI - FMR Values (in USD)") +
+  scale_x_continuous(limits = c(0.3, .65)) + 
   custom_theme
 
 plot4 <- data_2019 %>%
-  ggplot(aes(x = median_hh_income, y = gini_index)) +
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = gini_index, y = diff)) +
   geom_jitter() +
   geom_smooth(method = "lm") +
-  labs(title = "Gini Index Compared with Household Income, 2019",
-      x = "Median Household Income",
-      y = "Gini Index") +
-  scale_x_continuous(limits = c(0, 190000)) + 
+  labs(title = "Observed Minus Fair Market Rent Compared with Gini Index, 2019",
+      x = "Gini Index",
+      y = "ZORI - FMR Values (in USD)") +
+  scale_x_continuous(limits = c(0.3, .65)) + 
   custom_theme
 
 plot3 / plot4
 ```
 
+```{r fig.width=10, fig.height=8}
+### -------------------
+### coor plots
+### share black pop
+
+plot5 <- data_2014 %>%
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = percent_black_pop, y = diff)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Minus Fair Market Rent Compared with Share Black Population, 2014",
+      x = "Black Population",
+      y = "") +
+  scale_x_continuous(limits = c(0, 1),
+                     labels = scales::percent) + 
+  custom_theme
+
+plot6 <- data_2019 %>%
+  mutate(diff = zori_avg - hud_avg) %>%
+  ggplot(aes(x = percent_black_pop, y = diff)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Observed Minus Fair Market Rent Compared with Share Black Population, 2019",
+      x = "Gini Index",
+      y = "") +
+  scale_x_continuous(limits = c(0, 1),
+                     labels = scales::percent) + 
+  custom_theme
+
+plot5 / plot6
+```
 
 # Conclusions
 

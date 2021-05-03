@@ -1,5 +1,5 @@
 ### ----------------------
-### ACS data helper script
+### ACS data helper 
 ###
 
 # This script creates a list of acs5 variables and a function for pulling them
