@@ -542,7 +542,7 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 
 As expected, all of the neighborhoods saw an increase in their observed rent and subsidy values. The two Chicago neighborhoods that were majority rent burdened saw rent burdened households become the minority, though the shift was only by a few points. Aurora stayed majority rent burdened between the two study periods, indicating that households in Aurora continue to face issues related to affordable housing.
 
-### Socio-Economic Characteristic Context
+### Socio-Economic Contexts
 
 To further explore the data, we put together correlation plots describing the relationship between the difference values and three census variables: Median Household Income, Gini Index Coefficient, and Percent Black Population. Note that no correlation tests were performed in this section, this is a sequence of plots without underlying statistics.
 
@@ -651,7 +651,7 @@ Overall, these findings point to three possible variables that could be used in 
 
 # Conclusions
 
-The above analysis provides an analytic approach to exploring the efficiencies of the federal government in addressing issues of access to affordable housing. Our research found that household rent subsidies vary between ZIP Code areas, though generally Fair Market Rent calculations have been catching up with actual observed rents. Areas with the widest differences between observed and calculated fair market values were spaces that have been described as gentrifying by other researchers. Visual correlations were found between measures of segregation and inequality and the difference between FMR and observed rent values. 
+The above analysis provides an analytic approach to exploring the deficiencies of the federal government in addressing issues of access to affordable housing. Our research found that household rent subsidies vary between ZIP Code areas, though generally Fair Market Rent calculations have been catching up with actual observed rents. Areas with the widest differences between observed and calculated fair market values were spaces that have been described as gentrifying by other researchers. Visual correlations were found between measures of segregation and inequality and the difference between FMR and observed rent values. 
 
 ### Policy Implications
 
@@ -661,7 +661,7 @@ Further research and literature review is warranted given the findings of this p
 
 Given the results of our correlation plots, questions of the statistical relation between those values and housing subsidy efficiency could be answered using statistical tests and in-depth time-series regression analysis. Further, research in urban planning may benefit from comparing measures of gentrification with housing subsidy data to better understand dynamics of displacement, disinvestment, and dispossession in urban environments.
 
-## Limitations
+### Limitations
 
 
 
