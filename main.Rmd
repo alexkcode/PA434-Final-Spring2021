@@ -1,7 +1,7 @@
 ---
 title: "The Rent is Too Damn High"
 author: "Ethan Jantz & Alex Kwan"
-date: "4/17/2021"
+date: "5/3/2021"
 output:
   html_document: 
     code_folding: hide
@@ -10,7 +10,6 @@ output:
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
-# TODO: Create theme to apply to all plots with defined colors (could just be viridis or whatever)
 # TODO: Tables in places where a TODO: Put kable is found
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
@@ -32,7 +31,7 @@ library(UpSetR) # For plotting missing data
 library(visdat) # For plotting missing data
 
 ### ------------------------
-### helper functions
+### helper functions + theme
 ###
 
 summary_table <- function(data,
@@ -40,8 +39,8 @@ summary_table <- function(data,
   
   # This logic handles the orientation of the resulting table
   # "cols" means variable names are in the header
-  # "rows" means variable names are their own columns
-  x = "Statistic"
+  # "rows" means variable names are their own column
+  x = "Variable"
   y = ".value"
   
   if(orient == "cols") {
@@ -57,17 +56,28 @@ summary_table <- function(data,
              .names = "{.col}_{.fn}", 
              na.rm = T)) %>%  # Passes na.rm = T to all of the listed functions
     pivot_longer(cols = everything(),
-                 names_to = c(x, y), # You can switch these two values around to transpose the table
+                 names_to = c(x, y),
                  names_pattern = "(.*)_(.*)") %>%
     mutate(across(where(is.numeric), round, digits = 2))
   
 }
 
-# Defines acs5_pull function, lists the variables used, and calculates values with those variables
+# Defines acs5_pull function
+# Creates list of name-code pairs 
+# Defines final variable calculations
+# NOTE: To change the variables you can find codes using tidycensus::load_variables(year, "acs5")
 source(here("census_tools.R"))
+
+# Custom theme
+custom_theme <- theme_minimal() +
+  theme(plot.title = element_text(size = 16),
+        plot.subtitle = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12))
 
 ### ----------------
 ### research data
+###
 
 # Ingests and cleans the HUD data
 # Creates the object hud_data_raw in env
@@ -81,12 +91,6 @@ source(here("hud_data.R")) # creates hud_data_raw object in env
 # NOTE: Not every ZIP code in Chicago is included in this data
 zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %>%
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
-
-custom_theme <- theme_minimal() +
-  theme(plot.title = element_text(size = 16),
-        plot.subtitle = element_text(size = 12),
-        axis.title = element_text(size = 12),
-        axis.text = element_text(size = 12))
 ```
 
 # Introduction
@@ -197,7 +201,7 @@ data %>%
 
 ### Socio-Economic Data
 
-To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings.
+To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings. This is the [recommended method](https://www.census.gov/content/dam/Census/library/publications/2019/acs/acs_aian_handbook_2019_ch04.pdf) for comparing ACS estimates according to the Census Bureau.
 
 ```{r}
 ### -----------------------
@@ -226,6 +230,31 @@ data_2019 <- data %>%
   filter(year == 2019) %>%
   left_join(acs_2019, by = c("RegionName" = "ZIP", "year"))
 
+# Output: tables
+data_2014 %>%
+  select("Gini Index" = gini_index,
+         "Rent Burdened Households" = percent_unaffordable,
+         "Median Household Income (USD)" = median_hh_income,
+         "Black Population" = percent_black_pop) %>%
+  drop_na() %>%
+  summary_table() %>%
+    # Display as currency
+  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)`),
+         across(.cols = c(3, 5),
+                .fns = scales::percent,
+                accuracy = 1)) %>%
+  # basic table arrangements, label aesthetics
+  kable(escape = F, # Tells cell_spec HTML to process instead of print
+        align = "lrrrr",
+        caption = "2014 Census Data Summary",
+        format.args = list(big.mark = ",")) %>%
+  # full-table aesthetics
+  kable_styling(font_size = 20,
+                html_font = "Lucida",
+                full_width = F) %>%
+  # header
+  row_spec(0, bold = T, background = "#e5e5e5")
+
 data_2019 %>%
   select("Gini Index" = gini_index,
          "Rent Burdened Households" = percent_unaffordable,
@@ -241,7 +270,7 @@ data_2019 %>%
   # basic table arrangements, label aesthetics
   kable(escape = F, # Tells cell_spec HTML to process instead of print
         align = "lrrrr",
-        caption = "Census Data Summary",
+        caption = "2019 Census Data Summary",
         format.args = list(big.mark = ",")) %>%
   # full-table aesthetics
   kable_styling(font_size = 20,
@@ -282,7 +311,7 @@ zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
                          # and make the map harder to digest. st_filter removes them
 
-# Instead of a summary table include a map showing where the geographies are located
+# Output: Map
 data %>%
   left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
   ggplot(aes(geometry = geometry)) +
@@ -412,11 +441,11 @@ neighborhoods <-
   arrange(desc(diff)) %>%
    slice(head(row_number(), 10)) %>%
    select(RegionName) %>%
-   mutate(neighborhood = as.character(neighborhoods[RegionName])) %>%
+   mutate(Neighborhood = as.character(neighborhoods[RegionName])) %>%
    # basic table arrangements, label aesthetics
    kable(escape = F, # Tells cell_spec HTML to process instead of print
          align = "lr",
-         caption = "ZIP Codes and Nearby Neighborhoods") %>%
+         caption = "ZIP Codes and Associated Neighborhoods") %>%
    # full-table aesthetics
    kable_styling(font_size = 20,
                  html_font = "Lucida",
