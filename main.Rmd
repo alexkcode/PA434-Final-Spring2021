@@ -433,6 +433,31 @@ plot2 <- data_2019 %>%
 plot1 / plot2
 ```
 
+```{r}
+plot3 <- data_2014 %>%
+  ggplot(aes(x = median_hh_income, y = gini_index)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Gini Index Compared with Household Income, 2014",
+      x = "Median Household Income",
+      y = "Gini Index") +
+  scale_x_continuous(limits = c(0, 190000)) + 
+  theme_minimal()
+
+plot4 <- data_2019 %>%
+  ggplot(aes(x = median_hh_income, y = gini_index)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Gini Index Compared with Household Income, 2019",
+      x = "Median Household Income",
+      y = "Gini Index") +
+  scale_x_continuous(limits = c(0, 190000)) + 
+  theme_minimal()
+
+plot3 / plot4
+```
+
+
 # Conclusions
 
 ## Limitations
@@ -446,12 +471,18 @@ Dollar values aren't inflation adjusted, which would be important for a more in-
 ```{r fig.width=12, fig.height=6}
 # TODO: Visualize missingness in zori data. This could use zori_raw or zori_staging I think. Whichver works best. Have to figure out to label the year lines.
 
-zori_raw %>% 
+zori_raw %>%
   select(c("2014-01":"2021-02")) %>%
-  vis_miss() + 
+  vis_miss() +
   geom_vline(xintercept = seq(from = 0, to = 95, by = 12), size = 1) +
-  # geom_text(aes(x=seq(from = 0, to = 94, by = 12), label="test", y=0), colour="#00ba38", angle=0, text=element_text(size=11)) +
-  annotate(geom = "text", x = seq(from = 6, to = 88, by = 12), y = 95, label = c(2014:2020), size = 6, angle=0) +
+  annotate(
+    geom = "text",
+    x = seq(from = 6, to = 88, by = 12),
+    y = 95,
+    label = c(2014:2020),
+    size = 6,
+    angle = 0
+  ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90)) +
   labs(title = "Missing Monthly Data from Zillow")
@@ -466,7 +497,6 @@ ggplot(data %>%
          group_by(year) %>%
          summarise(n_missing = sum(is.na(hud_avg)))) +
   geom_bar(aes(x = year, y = n_missing), stat = "identity") +
-  # TODO: show every year on x axis
   scale_y_continuous(limits = c(0, 5)) +
   labs(x = "Year",
        y = "# of Missing Values",
