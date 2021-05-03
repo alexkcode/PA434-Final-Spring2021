@@ -90,6 +90,5 @@ hud_data_raw <- list(hud_2021, hud_2020, hud_2019, hud_2018,
                      hud_2017, hud_2016, hud_2015, hud_2014) %>%
   reduce(bind_rows)
 
-# We only want to have the hud_data_raw object in the environment
-# when this script finishes
-rm(list = setdiff(ls(), "hud_data_raw"))
+# Remove transitory data
+rm(list = apropos("hud_[0-9]")) # hud_{number}
