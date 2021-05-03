@@ -37,6 +37,12 @@ source(here("ingest_hud_data.R")) # creates hud_data_raw object in env
 # NOTE: Not every ZIP code in Chicago is included in this data
 zori_raw <- read_csv(here("Data", "ZORI_AllHomesPlusMultifamily_SSA_ZIP.csv")) %>%
   filter(RegionName %in% hud_data_raw$ZIP) # 92 ZIP Codes
+
+custom_theme <- theme_minimal() +
+  theme(plot.title = element_text(size = 16),
+        plot.subtitle = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12))
 ```
 
 # Introduction
@@ -132,8 +138,6 @@ data <- zori %>%
 
 To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings.
 
-
-
 ```{r}
 ### -----------------------
 ### Census data
@@ -171,7 +175,7 @@ data_2019 <- data %>%
 
 There may be a spatial component that would be necessary to understand the dynamics present within our data. To explore this we used the `tigris` package to acquire spatial data that would allow us to map the research data to real space. Spatial data was then joined to our research data for the purpose of visualizing the changes in the data over time in a way that allows a layperson to digest geographic differences. Because of Chicago's history of racial segregation leading to extreme spatial inequality, this research project serves as a testing ground to see if socio-economic differences play a part in the dynamics between observed rents and federal housing subsidies. The following map shows the location and area of ZIP codes included in the research data.
 
-```{r }
+```{r fig.width=7, fig.height=7}
 ### -----------------------------
 ### Spatial Data
 ### 
@@ -205,7 +209,7 @@ data %>%
   geom_sf(data = cook_county) + # County boundary
   geom_sf(aes(fill = 'red')) + # ZCTA boundaries
   labs(title = "Map of ZIP Codes in Research Data") +
-  theme_minimal() +
+  custom_theme +
   guides(fill = FALSE) # remove legend
 ```
 
@@ -215,7 +219,7 @@ data %>%
 
 The following plot shows the aggregate trend lines of observed rents and FMR values. Observed rents increased over time, which is to be expected due to growth. FMR values typically lag behind observed rents, which is why the two trend lines are parallel. This is due to the fact that HUD FMR values are calculated using rent estimates from ACS 5 year gross rent estimates from two years prior to the year of valuation, omitting new construction from the observed rental housing stock. The shortening of the gap between the two values in 2018 was due to a [change in methodology](https://www.huduser.gov/portal/datasets/fmr/fmr2018/FY2018-FMR-Preamble.pdf) by HUD. In 2018, the FMR calculation stopped using 50th percentile FMR values and began using 40th percentile FMR values. While describing the impacts and outcomes of this change is not within the scope of this project, it is worth noting that this likely increased the mobility of households receiving federal housing subsidies. 
 
-```{r }
+```{r  fig.width=8, fig.height=6}
 ### -----------
 ### Trend plot
 ###
@@ -234,7 +238,7 @@ data %>%
        x = "Year",
        y = "Rent (in USD)",
        color = "Values") +
-  theme_minimal() +
+  custom_theme +
   scale_y_continuous(labels = scales::label_dollar())
 ```
 
@@ -259,10 +263,11 @@ map_anim <- data %>%
   ggplot(aes(geometry = geometry)) +
   geom_sf(data = cook_county) + # County boundary
   geom_sf(aes(fill = diff)) + # ZCTA map
-  labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
+  # Adds the year value to the title through interpolation
+  labs(title = "Difference in FMR Verus Zillow Rents for Year: {current_frame}", 
        fill = "ZORI - HUD Value") + 
   scale_fill_viridis_c() +
-  theme_minimal() +
+  custom_theme +
   transition_manual(year) # transition_time doesn't work well with sf for some reason
 
 animate(map_anim, fps = 1, nframes = 6)
@@ -286,7 +291,7 @@ dist_anim <- data %>%
        subtitle = "blue is ZORI, red is HUD",
        x = "Rent", 
        y = "Density") +
-  theme_minimal() +
+  custom_theme +
   transition_manual(year)
 
 animate(dist_anim, fps = 1, nframes = 6)
@@ -402,7 +407,7 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 
 In comparing 2014 to 2019 we found that the neighborhoods typically known for gentrification have some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
 
-```{r}
+```{r  fig.width=8, fig.height=8}
 ### -------------------
 ### coor plot
 ### diff and hh_income
@@ -417,7 +422,7 @@ plot1 <- data_2014 %>%
       x = "Median Household Income",
       y = "ZORI - FMR Values (in USD)") +
   scale_x_continuous(limits = c(0, 190000)) + 
-  theme_minimal()
+  custom_theme
 
 plot2 <- data_2019 %>%
   mutate(diff = zori_avg - hud_avg) %>%
@@ -428,7 +433,7 @@ plot2 <- data_2019 %>%
       x = "Median Household Income",
       y = "ZORI - FMR Values (in USD)") +
   scale_x_continuous(limits = c(0, 190000)) + 
-  theme_minimal()
+  custom_theme
 
 plot1 / plot2
 ```
@@ -442,7 +447,7 @@ plot3 <- data_2014 %>%
       x = "Median Household Income",
       y = "Gini Index") +
   scale_x_continuous(limits = c(0, 190000)) + 
-  theme_minimal()
+  custom_theme
 
 plot4 <- data_2019 %>%
   ggplot(aes(x = median_hh_income, y = gini_index)) +
@@ -452,7 +457,7 @@ plot4 <- data_2019 %>%
       x = "Median Household Income",
       y = "Gini Index") +
   scale_x_continuous(limits = c(0, 190000)) + 
-  theme_minimal()
+  custom_theme
 
 plot3 / plot4
 ```
@@ -480,12 +485,16 @@ zori_raw %>%
     x = seq(from = 6, to = 88, by = 12),
     y = 95,
     label = c(2014:2020),
-    size = 6,
+    size = 8,
     angle = 0
   ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(title = "Missing Monthly Data from Zillow")
+  custom_theme +
+  theme(axis.text.x = element_text(size = 10, angle = 90),
+        axis.title = element_text(size = 16),
+        title = element_text(size = 40)) +
+  # theme(axis.text.x = element_blank()) +
+  labs(title = "Missing Monthly Data from Zillow",
+       ssubtitle = "Split by Months and Years")
 ```
 
 We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data seems to be Missing at Random, or MAR, since there doesn't seem to be any specific mechanism linking the missingness of rental data to those particular periods.
@@ -501,7 +510,7 @@ ggplot(data %>%
   labs(x = "Year",
        y = "# of Missing Values",
        title = "Missing Data from HUD") +
-  theme_minimal()
+  custom_theme
 ```
 
 
