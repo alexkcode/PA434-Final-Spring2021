@@ -659,11 +659,11 @@ Further research and literature review is warranted given the findings of this p
 
 ### Further Questions
 
-Given the results of our correlation plots, questions of the statistical relation between those values and housing subsidy efficiency could be answered using statistical tests and in-depth time-series regression analysis. 
+Given the results of our correlation plots, questions of the statistical relation between those values and housing subsidy efficiency could be answered using statistical tests and in-depth time-series regression analysis. Further, research in urban planning may benefit from comparing measures of gentrification with housing subsidy data to better understand dynamics of displacement, disinvestment, and dispossession in urban environments.
 
 ## Limitations
 
-Differences between ZORI and FMR data, missing ZORI values for some months could effect the generalizability of rents for some years.
+
 
 ### Missingness in data
 
@@ -698,7 +698,7 @@ zori_raw %>%
        ssubtitle = "Split by Months and Years")
 ```
 
-We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data seems to be Missing at Random, or MAR, since there doesn't seem to be any specific mechanism linking the missingness of rental data to those particular periods.
+We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data is not at random, and may be due to a lack of sufficient quantity of listings in earlier years. 2014 had far more missing values than any subsequent year. 
 
 After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it was not enough to cause concern with only 3 values missing in the three most recent years.
 
