@@ -633,11 +633,12 @@ We see here that missing data is much more of a concern for the first couple yea
 
 After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it was not enough to cause concern with only 3 values missing in the three most recent years.
 
-```{r}
+```{r fig.width=6, fig.height=4}
 ggplot(data %>%
          group_by(year) %>%
          summarise(n_missing = sum(is.na(hud_avg)))) +
   geom_bar(aes(x = year, y = n_missing), stat = "identity") +
+  scale_x_continuous(breaks = data$year) +
   scale_y_continuous(limits = c(0, 5)) +
   labs(x = "Year",
        y = "# of Missing Values",
