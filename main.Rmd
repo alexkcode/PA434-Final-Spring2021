@@ -62,6 +62,12 @@ summary_table <- function(data,
   
 }
 
+# Creates table to adjust 2014 census dollar values to 2019 values
+inflation_table <- blscrapeR::inflation_adjust(base_year = 2014) %>%
+  mutate(year = as.numeric(year)) %>%
+  filter(year %in% c(2014, 2019))
+
+
 # Defines acs5_pull function
 # Creates list of name-code pairs 
 # Defines final variable calculations
@@ -239,7 +245,7 @@ data_2014 %>%
   drop_na() %>%
   summary_table() %>%
     # Display as currency
-  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)`),
+  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)` * (inflation_table %>% filter(year == 2014) %>% pull(adj_value))), 
          across(.cols = c(3, 5),
                 .fns = scales::percent,
                 accuracy = 1)) %>%
@@ -253,7 +259,8 @@ data_2014 %>%
                 html_font = "Lucida",
                 full_width = F) %>%
   # header
-  row_spec(0, bold = T, background = "#e5e5e5")
+  row_spec(0, bold = T, background = "#e5e5e5") %>%
+  add_footnote("Dollar values adjusted for inflation")
 
 data_2019 %>%
   select("Gini Index" = gini_index,
@@ -317,7 +324,8 @@ data %>%
   ggplot(aes(geometry = geometry)) +
   geom_sf(data = cook_county) + # County boundary
   geom_sf(aes(fill = 'red')) + # ZCTA boundaries
-  labs(title = "Map of ZIP Codes in Research Data") +
+  labs(title = "Map of ZIP Codes in Research Data",
+       subtitle = "ZIP Codes in red, Cook County in grey") +
   custom_theme +
   guides(fill = FALSE) # remove legend
 ```
