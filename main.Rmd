@@ -312,11 +312,11 @@ neighborhoods <-
     "60045" = "Lake Forest, IL",
     "60602" = "Downtown",
     "60610" = "Near Northside, Cabrini Green",
-    "60126" = "Elmhurst",
+    "60126" = "Elmhurst, IL",
     "60642" = "River West",
     "60647" = "Logan Square",
     "60616" = "Chinatown, Armour Square, Bridgeport",
-    "60525" = "La Grange",
+    "60525" = "La Grange, IL",
     "60612" = "East Garfield Park",
     "60608" = "Pilsen",
     "60538" = "Aurora, IL"
@@ -416,7 +416,7 @@ In comparing 2014 to 2019 we see that the neighborhoods typically known for gent
 ### -------------------
 ### coor plot
 ### diff and hh_income
-# TODO: Do the same with gini_index, percent_snap_recipients, and percent_black_pop
+# TODO: Do the same with gini_index and percent_black_pop
 
 plot1 <- data_2014 %>%
   mutate(diff = zori_avg - hud_avg) %>%
@@ -462,7 +462,7 @@ vis_miss(zori_raw %>% select(c("2014-01":"2021-02"))) +
 
 We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data seems to be Missing at Random, or MAR, since there doesn't seem to be any specific mechanism linking the missingness of rental data to those particular periods.
 
-After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it was not enough to cause concern:
+After the join between HUD and Zillow data, we find that Zillow has data on some years that HUD doesn't, but it was not enough to cause concern with only 3 values missing in the three most recent years.
 
 ```{r fig.width=10, fig.height=5}
 vis_miss(data %>% select(zori_avg, hud_avg)) +
