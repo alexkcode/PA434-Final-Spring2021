@@ -63,9 +63,9 @@ summary_table <- function(data,
 }
 
 # Creates table to adjust 2014 census dollar values to 2019 values
-inflation_table <- blscrapeR::inflation_adjust(base_year = 2014) %>%
+inflation_table <- blscrapeR::inflation_adjust(base_year = 2019) %>%
   mutate(year = as.numeric(year)) %>%
-  filter(year %in% c(2014, 2019))
+  filter(year %in% c(2014:2020))
 
 
 # Defines acs5_pull function
@@ -141,7 +141,7 @@ The following section describes methods used to wrangle and analyze the public d
 
 Zillow's ZORI data provides average observed rents without regard for the number of bedrooms within. HUD provides FMR calculations for each bedroom size. To compare these two datasets we averaged the FMR for each bedroom size (studio through 4 bedroom) together to create an average FMR for the ZIP code. This method was chosen for its relative simplicity, with proposed alternatives including a weighted average with weights tied to bedroom size or the selection of one bedroom size as the standard for comparison. 
 
-HUD FMR data was collected at the ZIP code level, with calculations being made for each year in the study period. Zillow data was provided for each month within the study period. To compare data across the same unit of time, we transformed the ZORI data and averaged the monthly values to approximate a year average for each ZIP code. 
+HUD FMR data was collected at the ZIP code level, with calculations being made for each year in the study period. Zillow data was provided for each month within the study period. To compare data across the same unit of time, we transformed the ZORI data and averaged the monthly values to approximate a year average for each ZIP code. All dollar values were adjusted to 2019 values after calculations were completed.
 
 HUD data was clean and complete, meaning that no rows contained any missing values and represented 487 ZIP codes within the Chicago metropolitan region across the 7 year study period. Zillow data was relatively more limited, sharing only 92 ZIP codes with the HUD data and missing many values within those ZIP codes for certain time periods within our study period. Missingness is discussed further in the Conclusions section.
 
@@ -181,8 +181,11 @@ zori <- zori_staging %>%
 
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
-  rename(hud_avg = br_avg, zori_avg = rent_avg)
-
+  rename(hud_avg = br_avg, zori_avg = rent_avg) %>%
+  # Adjust dollar values to 2019 dollars
+  mutate(across(c(hud_avg, zori_avg),
+                ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
+  
 # Output: table
 data %>% 
   select("Zillow Observed Rent Index Value" = zori_avg,
@@ -207,7 +210,7 @@ data %>%
 
 ### Socio-Economic Data
 
-To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings. This is the [recommended method](https://www.census.gov/content/dam/Census/library/publications/2019/acs/acs_aian_handbook_2019_ch04.pdf) for comparing ACS estimates according to the Census Bureau.
+To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings. This is the [recommended method](https://www.census.gov/content/dam/Census/library/publications/2019/acs/acs_aian_handbook_2019_ch04.pdf) for comparing ACS estimates according to the Census Bureau. 2014 dollar values were adjusted to 2019 values to account for inflation.
 
 ```{r}
 ### -----------------------
@@ -230,7 +233,8 @@ acs_2019 <- acs5_pull(2019, zips) %>%
 
 data_2014 <- data %>%
   filter(year == 2014) %>%
-  left_join(acs_2014, by = c("RegionName" = "ZIP", "year"))
+  left_join(acs_2014, by = c("RegionName" = "ZIP", "year")) %>%
+  mutate(median_hh_income =  median_hh_income / (inflation_table %>% filter(year == year) %>% pull(adj_value)))
 
 data_2019 <- data %>%
   filter(year == 2019) %>%
@@ -245,7 +249,7 @@ data_2014 %>%
   drop_na() %>%
   summary_table() %>%
     # Display as currency
-  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)` * (inflation_table %>% filter(year == 2014) %>% pull(adj_value))), 
+  mutate(`Median Household Income (USD)` = scales::dollar(`Median Household Income (USD)`), 
          across(.cols = c(3, 5),
                 .fns = scales::percent,
                 accuracy = 1)) %>%
@@ -260,7 +264,7 @@ data_2014 %>%
                 full_width = F) %>%
   # header
   row_spec(0, bold = T, background = "#e5e5e5") %>%
-  add_footnote("Dollar values adjusted for inflation")
+  add_footnote("Dollars in 2019 values")
 
 data_2019 %>%
   select("Gini Index" = gini_index,
@@ -351,7 +355,7 @@ data %>%
   ggplot(aes(x = year, y = rent, color = index)) +
   geom_line(size = 2, lineend = "round") +
   labs(title = "Average Values, Fair Market Rent and Observed Rents, 2014 - 2020",
-       subtitle = "HUD Fair Market Rent Average and Zillow Observed Rent Index Average",
+       subtitle = "HUD Fair Market Rent Average and Zillow Observed Rent Index Average \n (adjusted to 2019 dollars)",
        x = "Year",
        y = "Rent (in USD)",
        color = "Values") +
@@ -359,7 +363,7 @@ data %>%
   scale_y_continuous(labels = scales::label_dollar())
 ```
 
-These general trends in Chicago's rental housing market demonstrate that, on average, rent is increasing in the city. Housing subsidies follow similar trends, but never match those of observed rents. This indicates that households with the most need, those that receive rental subsidies, are chronically unable to afford high-quality housing in Chicago.
+These general trends in Chicago's rental housing market demonstrate that, on average, rent was increasing in the city until 2016, where observed rentes plateaued. Housing subsidies follow upward trends, but never match those of observed rents. This indicates that households with the most need, those that receive rental subsidies, have been chronically unable to afford high-quality housing in Chicago.
 
 ### Pulling Out the Magnifying Glass
 
@@ -382,7 +386,8 @@ map_anim <- data %>%
   geom_sf(aes(fill = diff)) + # ZCTA map
   # Adds the year value to the title through interpolation
   labs(title = "Difference in FMR Verus Zillow Rents for Year: {current_frame}", 
-       fill = "ZORI - HUD Value") + 
+       subtitle = "in 2019 dollars", 
+       fill = "ZORI - HUD Value ($$)") + 
   scale_fill_viridis_c() +
   custom_theme +
   transition_manual(year) # transition_time doesn't work well with sf for some reason
@@ -400,7 +405,7 @@ The following distribution plots help us understand that the change in the diffe
 dist_anim <- data %>% 
   group_by(RegionName, year) %>%
   summarize(ZORI = mean(zori_avg, na.rm = T),
-         HUD = mean(hud_avg, na.rm = T)) %>%
+            HUD = mean(hud_avg, na.rm = T)) %>%
   ggplot() +
   geom_density(aes(x = ZORI), fill = "blue", alpha = .5) +
   geom_density(aes(x = HUD), fill = "red", alpha = .5) +
@@ -462,7 +467,7 @@ neighborhoods <-
    row_spec(0, bold = T, background = "#e5e5e5")
 ```
 
-The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD as a tenant's gross rent being greater than 30% of their income. Any rent above 50% of tenant income is considered to be a severe rent burden. The lines between the plotted values are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened. 
+The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD as a tenant's gross rent being greater than 30% of their income. Any rent above 50% of tenant income is considered to be a severe rent burden. The lines between the plotted values are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened.
 
 ```{r fig.width=10, fig.height=11}
 ### ------------------
@@ -524,8 +529,8 @@ cleveland_plot <- function(input_data, yr, acs) {
       subtitle = "HUD versus Zillow with Proportion of Population Rent Burdened",
       x = "ZIP",
       y = "Rent Index",
-      shape = "Source",
-      color = "Proportion"
+      shape = "Rent Value",
+      color = "Proportion Rent Burdened"
     ) +
     # Proper labels with aesthetics
     scale_color_manual(values = c("Minority"="#00ba38","Majority"="#F8766D")) +
@@ -535,6 +540,8 @@ cleveland_plot <- function(input_data, yr, acs) {
 
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
+
+The two neighborhoods with a majority of rent burdened households saw an increase in rents and subsidies 
 
 ### Socio-Economic Characteristic Context
 
