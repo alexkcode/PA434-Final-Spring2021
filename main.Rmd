@@ -540,7 +540,7 @@ cleveland_plot <- function(input_data, yr, acs) {
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
 
-As expected, all of the neighborhoods saw an increase in their observed rent and subsidy values. The two Chicago neighborhoods that were majority rent burdened saw rent burdened households become the minority, though the shift was only by a few points. Aurora stayed majority rent burdened between the two study periods, indicating that households in Aurora continue to face issues related to affordable housing.
+As expected, all of the neighborhoods saw an increase in their observed rent and subsidy values. The two Chicago neighborhoods that were majority rent burdened saw rent burdened households become the minority, though the shift was only by a few points. Aurora stayed majority rent burdened between the two study periods, indicating that households in Aurora continue to face issues related to affordable housing. It's important to note that the separation between majority and minority labeling of the population as burdened is at 50%. This means that even though the historically marginalized neighborhoods, like Pilsen and Garfield Park, shifted into being minority rent burdened in 2019, they are still over 40% rent burdened!
 
 ### Socio-Economic Characteristic Context
 
@@ -685,7 +685,15 @@ zori_raw %>%
   theme(axis.text.x = element_text(size = 10, angle = 90),
         axis.title = element_text(size = 16),
         title = element_text(size = 40)) +
-  # theme(axis.text.x = element_blank()) +
+  theme(axis.text.x = element_blank()) +
+  annotate(
+    geom = "text",
+    x = seq(from = 1.5, to = 87, by = 3),
+    y = -2.5,
+    label = c(rep(x = c("Q1","Q2","Q3","Q4"), time = length(c(2014:2020)), each = 1),"Q1"),
+    size = 4,
+    angle = 90
+  ) +
   labs(title = "Missing Monthly Data from Zillow",
        ssubtitle = "Split by Months and Years")
 ```
