@@ -530,7 +530,7 @@ cleveland_plot <- function(input_data, yr, acs) {
       x = "ZIP",
       y = "Rent Index",
       shape = "Rent Value",
-      color = "Proportion Rent Burdened"
+      color = "Percent Rent Burdened"
     ) +
     # Proper labels with aesthetics
     scale_color_manual(values = c("Minority"="#00ba38","Majority"="#F8766D")) +
@@ -541,11 +541,11 @@ cleveland_plot <- function(input_data, yr, acs) {
 cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleveland_data, 2019, acs_to_year_mapping)
 ```
 
-The two neighborhoods with a majority of rent burdened households saw an increase in rents and subsidies 
+As expected, all of the neighborhoods saw an increase in their observed rent and subsidy values. The two Chicago neighborhoods that were majority rent burdened saw rent burdened households become the minority, though the shift was only by a few points. Aurora stayed majority rent burdened between the two study periods, indicating that households in Aurora continue to face issues related to affordable housing.
 
 ### Socio-Economic Characteristic Context
 
-In comparing 2014 to 2019 we found that the neighborhoods typically known for gentrification have some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
+To further explore the data, we put together correlation plots describing the relationship between the difference values and three census variables: Median Household Income, Gini Index Coefficient, and Percent Black Population. Note that no correlation tests were performed in this section, this is a sequence of plots without underlying statistics.
 
 ```{r fig.width=10, fig.height=8}
 ### -------------------
@@ -558,8 +558,9 @@ plot1 <- data_2014 %>%
   geom_jitter() +
   geom_smooth(method = "lm") +
   labs(title = "Observed Minus Fair Market Rent Compared with Household Income, 2014",
-      x = "Median Household Income",
-      y = "ZORI - FMR Values (in USD)") +
+       subtitle = "dollars adjusted to 2019 values",
+       x = "Median Household Income",
+       y = "ZORI - FMR Values (in USD)") +
   scale_x_continuous(limits = c(0, 190000)) + 
   custom_theme
 
@@ -577,6 +578,8 @@ plot2 <- data_2019 %>%
 plot1 / plot2
 ```
 
+Correlation between difference values and median household income were positive for both years. This makes sense since areas with higher household incomes are likely to have newer, more expensive housing stock.
+
 ```{r fig.width=10, fig.height=8}
 ### -------------------
 ### coor plots
@@ -588,8 +591,9 @@ plot3 <- data_2014 %>%
   geom_jitter() +
   geom_smooth(method = "lm") +
   labs(title = "Observed Minus Fair Market Rent Compared with Gini Index, 2014",
-      x = "Gini index",
-      y = "ZORI - FMR Values (in USD)") +
+       subtitle = "dollars adjusted to 2019 values",
+       x = "Gini index",
+       y = "ZORI - FMR Values (in USD)") +
   scale_x_continuous(limits = c(0.3, .65)) + 
   custom_theme
 
@@ -607,6 +611,8 @@ plot4 <- data_2019 %>%
 plot3 / plot4
 ```
 
+These plots demonstrate a positive correlation between Gini Index Coefficient values and difference values. Though the relationship was less strong in 2019 than 2014. The difference value indicates a lack of adequate housing subsidy for low income housholds. This correlational change makes sense given the decrease in difference values between the two time periods. There are multiple possible explanations for this change ranging from a decrease in income inequality, a shift in the makeup of subsidized households in the area, or a displacement of the lowest income households from the study areas. Further research on this phenomenon seems warranted in this circumstance.
+
 ```{r fig.width=10, fig.height=8}
 ### -------------------
 ### coor plots
@@ -618,8 +624,9 @@ plot5 <- data_2014 %>%
   geom_jitter() +
   geom_smooth(method = "lm") +
   labs(title = "Observed Minus Fair Market Rent Compared with Share Black Population, 2014",
-      x = "Black Population",
-      y = "") +
+       subtitle = "dollars adjusted to 2019 values",
+       x = "Black Population",
+       y = "") +
   scale_x_continuous(limits = c(0, 1),
                      labels = scales::percent) + 
   custom_theme
@@ -638,6 +645,10 @@ plot6 <- data_2019 %>%
 
 plot5 / plot6
 ```
+
+These plots show that the relation between difference values and the proportion of Black population in the area is negative. Given the history of segregation and racial inequities in Chicago, this is not surprising. The majority of ZIP codes in the study areas have a sub-25% proportion of Black residents. Those that are majority Black are associated with lower or negative difference values. 
+
+Overall, these findings point to three possible variables that could be used in a regression analysis of this data.
 
 # Conclusions
 
