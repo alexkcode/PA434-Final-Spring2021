@@ -10,10 +10,8 @@ output:
 ---
 
 ```{r setup,  message = FALSE, warning = FALSE}
-# TODO: Ensure theme_minimal applied to all plots
 # TODO: Create theme to apply to all plots with defined colors (could just be viridis or whatever)
 # TODO: Tables in places where a TODO: Put kable is found
-# TODO: Update cleveland plot to reflect available socio-economic data
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(gganimate) # Used to create an animated plot
 # install.packages('gifski') necessary for animation to compile
@@ -205,9 +203,8 @@ data %>%
   left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
   ggplot(aes(geometry = geometry)) +
   geom_sf(data = cook_county) + # County boundary
-  geom_sf(aes(fill = RegionName)) + # ZCTA boundaries
-  labs(title = "Map of ZIP Codes in Research Data",
-       subtitle = "colors included for legibility purposes only") +
+  geom_sf(aes(fill = 'red')) + # ZCTA boundaries
+  labs(title = "Map of ZIP Codes in Research Data") +
   theme_minimal() +
   guides(fill = FALSE) # remove legend
 ```
@@ -322,10 +319,7 @@ neighborhoods <-
 
 # TODO: make this into kable
 data %>%
-  mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
-  ungroup() %>%
   filter(year == 2014) %>%
-  arrange(desc(diff)) %>%
   slice(head(row_number(), 10)) %>%
   select(RegionName) %>%
   mutate(neighborhood = as.character(neighborhoods[RegionName]))
