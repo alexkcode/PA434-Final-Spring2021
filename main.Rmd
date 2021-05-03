@@ -134,6 +134,8 @@ data <- zori %>%
 
 To place the housing market data into better context we combined it with socio-economic data provided by the US Census Bureau's American Community Survey. ZIP code-level data is provided only in their 5 year estimate data products, which limited our ability to thoroughly analyze changes over 1 year time periods. To accommodate this limitation we pulled the data for two non-overlapping 5 year estimates, 2014 and 2019, and used them to supplement our findings.
 
+
+
 ```{r}
 ### -----------------------
 ### Census data
@@ -198,7 +200,7 @@ zcta <- zctas(cb = T, starts_with = starts_with, progress_bar = F) %>%
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
                          # and make the map harder to digest. st_filter removes them
 
-# Instead of a summary table include a map showing where the geographies used are located
+# Instead of a summary table include a map showing where the geographies are located
 data %>%
   left_join(zcta, by = c("RegionName" = "GEOID10")) %>%
   ggplot(aes(geometry = geometry)) +
@@ -261,7 +263,6 @@ map_anim <- data %>%
   geom_sf(data = cook_county) + # County boundary
   geom_sf(aes(fill = diff)) + # ZCTA map
   labs(title = "Year: {current_frame}", # Adds the year value to the title through interpolation
-       caption = "In some ZIP codes, the difference between ZORI and HUD FMR has changed drastically",
        fill = "ZORI - HUD Value") + 
   scale_fill_viridis_c() +
   theme_minimal() +
@@ -269,8 +270,6 @@ map_anim <- data %>%
 
 animate(map_anim, fps = 1, nframes = 6)
 ```
-
-The following distribution plots help us understand that this is an effect of HUD FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could mean that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
 The following distribution plots help us understand that the change in the difference between ZORI values and HUD FMR is an effect of FMR increasing, not ZORI decreasing. What does this mean for housing affordability? This could indicate that HUD voucher recipients are being provided a wider range of places to move to as HUD FMR begins to match average rents.
 
@@ -290,14 +289,13 @@ dist_anim <- data %>%
        subtitle = "blue is ZORI, red is HUD",
        x = "Rent", 
        y = "Density") +
+  theme_minimal() +
   transition_manual(year)
 
 animate(dist_anim, fps = 1, nframes = 6)
 ```
 
-We see that the HUD FMR is starting to match the market rate closer and closer but we see the centers of both distributions are slowing rightward and simultaneously the distribution shape is getting wider and flatter. What could explain this change in variation and simultaneous shifting in rent over time? 
-
-The above animation shows that not every SAFMR value is equally responsive to market conditions. ZIP Codes in some areas saw relatively little change in the difference between their observed rents and calculated FMR values, while others saw drastic changes over the same time period - shifting from a large positive value to a negative value. This may indicate inefficiencies in the data and methods used to calculate SAFMR since an ideal model of FMR calculation would result in a relatively homogeneous set of difference values across all areas. Further exploration of these differences could take the form of a case study of areas where the difference value was positive and saw little change across the study period compared with those where the difference value was close to negative and saw little change across the study period. The following section attempts to explore a methodological avenue for doing such a case study.
+The above animations show that not every SAFMR value is equally responsive to market conditions, even when larger trends indicate progress towards intended outcomes. ZIP Codes in some areas saw relatively little change in the difference between their observed rents and calculated FMR values, while others saw drastic changes over the same time period - shifting from a large positive value to a negative value. This may indicate inefficiencies in the data and methods used to calculate SAFMR since an ideal model of FMR calculation would result in a relatively homogeneous set of difference values across all areas. Further exploration of these differences could take the form of a case study of areas where the difference value was positive and saw little change across the study period compared with those where the difference value was close to negative and saw little change across the study period. The following section attempts to explore a methodological avenue for doing such a case study.
 
 ### Examining the Edges: Largest Differences in FMR Calculations and Observed Rents
 
@@ -333,16 +331,15 @@ data %>%
   mutate(neighborhood = as.character(neighborhoods[RegionName]))
 ```
 
-The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD definition as a gross rent greater than 30% of income. Any rent above 50% of income is considered to be a severely rent burdened. The lines between the plots are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened. 
+The following plots visualize the change in the selected ZIP codes between 2014 and 2019 in terms of observed minus fair market rent values and rent burden. Rent burden is defined by HUD as a tenant's gross rent being greater than 30% of their income. Any rent above 50% of tenant income is considered to be a severe rent burden. The lines between the plotted values are colored based on whether the proportion of households in the ZIP code area were majority or minority rent burdened. 
 
 ```{r fig.width=10, fig.height=11}
 ### ------------------
 ### Cleveland Dot Plot 
-### include ACS data
+### 
 
 cleveland_data <-
   data %>%
-  # can't do functions in label assignments so gotta do it here
   mutate(diff = (zori_avg - hud_avg)/hud_avg) %>%
   ungroup() %>%
   filter(RegionName %in% names(neighborhoods) & year %in% c(2014,2019)) %>%
@@ -356,14 +353,12 @@ acs_to_year_mapping <- list(
   "2019" = data_2019
 )
 
-# still figuring out the best aesthetic 
 cleveland_plot <- function(input_data, yr, acs) {
   plot_data <-
     input_data %>%
     left_join(acs[[as.character(yr)]], by = c("RegionName", "year")) %>%
     filter(year == yr) %>%
-    mutate(# map to HUD definition of housing affordability
-           burden = cut(percent_unaffordable,
+    mutate(burden = cut(percent_unaffordable,
                         breaks=c(0, 0.5, 1),
                         labels=c("Minority","Majority")))
   
@@ -382,7 +377,7 @@ cleveland_plot <- function(input_data, yr, acs) {
       size = 3.5,
       hjust = -0.25
     ) +
-    # labeling the lines with the neighborhood
+    # labeling the lines
     geom_text(
       data = plot_data %>% filter(source == "hud_avg"),
       mapping = aes(label = neighborhood),
@@ -401,6 +396,7 @@ cleveland_plot <- function(input_data, yr, acs) {
       shape = "Source",
       color = "Proportion"
     ) +
+    # Proper labels with aesthetics
     scale_color_manual(values = c("Minority"="#00ba38","Majority"="#F8766D")) +
     scale_shape_manual(values = c("circle","square"), labels = c("HUD", "Zillow"))
 }
@@ -410,7 +406,7 @@ cleveland_plot(cleveland_data, 2014, acs_to_year_mapping) / cleveland_plot(cleve
 
 ### Socio-Economic Characteristic Context
 
-In comparing 2014 to 2019 we see that the neighborhoods typically known for gentrification show up in some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
+In comparing 2014 to 2019 we found that the neighborhoods typically known for gentrification have some of the largest differences in market rates. This is especially true in regards to neighborhoods that were historically marginalized due to segregation and disinvestment. Adding in the income data we see that while incomes for areas like Downtown have increased over time, thereby reducing the rent burden, but the incomes in the marginalized areas have not proportionally increased.
 
 ```{r}
 ### -------------------
@@ -426,7 +422,8 @@ plot1 <- data_2014 %>%
   labs(title = "Observed Minus Fair Market Rent Compared with Household Income, 2014",
       x = "Median Household Income",
       y = "ZORI - FMR Values (in USD)") +
-  scale_x_continuous(limits = c(0, 190000))
+  scale_x_continuous(limits = c(0, 190000)) + 
+  theme_minimal()
 
 plot2 <- data_2019 %>%
   mutate(diff = zori_avg - hud_avg) %>%
@@ -436,7 +433,8 @@ plot2 <- data_2019 %>%
   labs(title = "Observed Minus Fair Market Rent Compared with Household Income, 2019",
       x = "Median Household Income",
       y = "ZORI - FMR Values (in USD)") +
-  scale_x_continuous(limits = c(0, 190000))
+  scale_x_continuous(limits = c(0, 190000)) + 
+  theme_minimal()
 
 plot1 / plot2
 ```
@@ -457,7 +455,8 @@ Dollar values aren't inflation adjusted, which would be important for a more in-
 vis_miss(zori_raw %>% select(c("2014-01":"2021-02"))) + 
   geom_vline(xintercept = seq(from = 0, to = 94, by = 12), size = 1) +
   # geom_text(aes(x=seq(from = 0, to = 94, by = 12), label="test", y=0), colour="#00ba38", angle=0, text=element_text(size=11)) +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme_minimal()
 ```
 
 We see here that missing data is much more of a concern for the first couple years, 2014 and 2015, especially in the upper range of rents, but less of an issue for the later years. This missing data seems to be Missing at Random, or MAR, since there doesn't seem to be any specific mechanism linking the missingness of rental data to those particular periods.
@@ -471,7 +470,8 @@ vis_miss(data %>% select(zori_avg, hud_avg)) +
            summarise(n_missing = sum(is.na(hud_avg)))) +
   geom_bar(aes(x = year, y = n_missing), stat="identity") + 
   # TODO: show every year on x axis
-  scale_y_continuous(limits = c(0,5))
+  scale_y_continuous(limits = c(0,5)) +
+  theme_minimal()
 ```
 
 
