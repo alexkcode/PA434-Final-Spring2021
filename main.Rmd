@@ -695,7 +695,7 @@ zori_raw %>%
     angle = 90
   ) +
   labs(title = "Missing Monthly Data from Zillow",
-       subtitle = "Split by Months and Years")
+       subtitle = "Split by Quarter and Year")
 ```
 
 We see here that missing data is much more of a concern for 2014 and 2015, especially in the upper range of rents, but less of an issue for the subsequent years. This missing data is not at random, and may be due to a lack of sufficient quantity of listings in earlier years. 2014 had far more missing values than any subsequent year. 
