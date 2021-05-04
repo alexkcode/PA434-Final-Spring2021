@@ -1,5 +1,5 @@
 ---
-title: "The Rent is Too Damn High"
+title: "Exploring Subsidized Housing Using Public Data"
 author: "Ethan Jantz & Alex Kwan"
 date: "5/3/2021"
 output:
