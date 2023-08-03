@@ -62,6 +62,7 @@ summary_table <- function(data,
 }
 
 # Creates table to adjust 2014 census dollar values to 2019 values
+# need to input API key?
 inflation_table <- blscrapeR::inflation_adjust(base_year = 2019) %>%
   mutate(year = as.numeric(year)) %>%
   filter(year %in% c(2014:2020))
