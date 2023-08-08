@@ -181,6 +181,13 @@ zori <- zori_staging %>%
 ### market data
 ###
 
+adjust = function(x) {
+  show(x)
+  inflation_values = inflation_table %>% filter(year == year) %>% pull(adj_value)
+  show(inflation_values)
+  x / inflation_values
+}
+
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg) %>%
@@ -188,8 +195,10 @@ data <- zori %>%
   mutate(hud_avg = ifelse(is.na(hud_avg), 
                             median(hud_avg, na.rm = TRUE), 
                             hud_avg)) %>%
-  mutate(across(ends_with("zori_avg"),
-                ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
+  group_by(year) %>%
+  # mutate(across(ends_with("avg"),
+  #               ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
+  mutate(hud_avg = adjust(hud_avg))
   
 # Output: table
 data %>% 
