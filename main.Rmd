@@ -62,11 +62,11 @@ summary_table <- function(data,
 }
 
 # Creates table to adjust 2014 census dollar values to 2019 values
-# need to input API key?
+# old code
 # inflation_table <- blscrapeR::inflation_adjust(base_year = 2019) %>%
 #   mutate(year = as.numeric(year)) %>%
 #   filter(year %in% c(2014:2020))
-
+# downloaded to flat file to reduce inconsistencies from API changes
 inflation_table <- read_tsv("./Data/BLS/cu.data.1.AllItems.txt") %>%
   mutate(year = as.numeric(year),
          adj_value = value) %>%
@@ -181,11 +181,9 @@ zori <- zori_staging %>%
 ### market data
 ###
 
-adjust = function(x) {
-  show(x)
+adjust = function(x, year) {
   inflation_values = inflation_table %>% filter(year == year) %>% pull(adj_value)
-  show(inflation_values)
-  x / inflation_values
+  x$hud_avg / inflation_values
 }
 
 data <- zori %>%
@@ -198,7 +196,7 @@ data <- zori %>%
   group_by(year) %>%
   # mutate(across(ends_with("avg"),
   #               ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
-  mutate(hud_avg = adjust(hud_avg))
+  group_map(~ adjust(.x, year))
   
 # Output: table
 data %>% 
