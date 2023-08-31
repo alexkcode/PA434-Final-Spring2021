@@ -67,6 +67,11 @@ summary_table <- function(data,
 #   mutate(year = as.numeric(year)) %>%
 #   filter(year %in% c(2014:2020))
 # downloaded to flat file to reduce inconsistencies from API changes
+# flat file not currently adjusted to base year
+# for CUSRxxxxxxx and CUUSSxxxxx variables
+
+show(blscrapeR::bls_api("CUSR0000SA0"))
+
 inflation_table <- read_tsv("./Data/BLS/cu.data.1.AllItems.txt") %>%
   mutate(year = as.numeric(year),
          adj_value = value) %>%
@@ -181,22 +186,31 @@ zori <- zori_staging %>%
 ### market data
 ###
 
-adjust = function(x, year) {
-  inflation_values = inflation_table %>% filter(year == year) %>% pull(adj_value)
-  x$hud_avg / inflation_values
-}
-
 data <- zori %>%
   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
   rename(hud_avg = br_avg, zori_avg = rent_avg) %>%
   # Adjust dollar values to 2019 dollars
-  mutate(hud_avg = ifelse(is.na(hud_avg), 
-                            median(hud_avg, na.rm = TRUE), 
-                            hud_avg)) %>%
-  group_by(year) %>%
-  # mutate(across(ends_with("avg"),
-  #               ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
-  group_map(~ adjust(.x, year))
+  mutate(across(c(hud_avg, zori_avg),
+                ~ .x / (inflation_table %>% filter(year == year) %>% pull(adj_value))))
+
+# adjust = function(df, year) {
+#   inflation_values = inflation_table %>% filter(year == year) %>% pull(adj_value)
+#   # show(df)
+#   ret = df %>% select(hud_avg) / inflation_values
+#   ret = ret %>% mutate(year = year)
+#   ret
+# }
+# 
+# data <- zori %>%
+#   left_join(hud_data, by = c("RegionName" = "ZIP", "year" = "year")) %>%
+#   rename(hud_avg = br_avg, zori_avg = rent_avg) %>%
+#   # Adjust dollar values to 2019 dollars
+#   mutate(hud_avg = ifelse(is.na(hud_avg), 
+#                           median(hud_avg, na.rm = TRUE), 
+#                           hud_avg)) %>%
+#   group_by(year) %>%
+#   group_modify(~ adjust(.x, .x$year))
+  
   
 # Output: table
 data %>% 
