@@ -336,7 +336,10 @@ starts_with <- data %>%
   unique() # c("53", "60") 
 
 ### Get ZCTA geometry
-zcta <- zctas(cb = F, starts_with = starts_with, progress_bar = F, refresh = T) %>%
+tigris_cache_dir(here())
+zcta <- zctas(cb = F, starts_with = starts_with, 
+              progress_bar = F, refresh = T,
+              keep_zipped_shapefile = T) %>%
   select(GEOID10, geometry) %>%
   st_transform(crs) %>% # Without this transformation to ILNAD83 the map looks weird
   st_filter(cook_county) # There are ZIP codes that fall outside of Cook county
